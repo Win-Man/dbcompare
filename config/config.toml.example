@@ -1,0 +1,34 @@
+[log]
+log-level = "Debug"
+log-path = "dbcompare.log"
+
+[mysql-config]
+host = '127.0.0.1'
+port = 3306
+user = "root"
+password = "pass"
+database = "dev"
+
+[tidb-config]
+host = '1.2.3.4'
+port = 4000
+user = "root"
+password = ""
+database = "test"
+
+[oracle-config]
+host = '1.2.3.4'
+port = 1539
+user = "user"
+password = "123456"
+service-name = "orcl"
+schema-name = ""
+
+[compare-config]
+source-type = "tidb" ## tidb|mysql|oracle
+dest-type = "oracle"
+sqlfile = "./config/a.sql"
+sqlfile-delimiter = ";"
+output = "file"    ## file|print 
+outputprefix = "output"
+
