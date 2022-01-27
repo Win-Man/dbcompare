@@ -167,7 +167,7 @@ func OutPrint(db *sql.DB, sql string) (*Table, error) {
 
 	var columnHeader []string
 	for i, colType := range columnTypes {
-		columnHeader = append(columnHeader, colType.Name())
+		columnHeader = append(columnHeader, strings.ToUpper(colType.Name()))
 		rowValue[i] = reflect.New(colType.ScanType())           // 跟据数据库参数类型，创建默认值 和类型
 		rowParam[i] = reflect.ValueOf(&rowValue[i]).Interface() // 跟据接收的数据的类型反射出值的地址
 		//fmt.Printf("%s:%s,%s\n",colType.Name(),colType.ScanType().String(),colType.DatabaseTypeName())
@@ -225,7 +225,7 @@ func OutPrintOracle(db *sql.DB, sql string) (*Table, error) {
 	var rowValue = make([]interface{}, len(columnTypes)) // 接收数据一行列的数组
 
 	var columnHeader []string
-	fmt.Printf("columnType:%+v", columnTypes)
+	//fmt.Printf("columnType:%+v", columnTypes)
 	for i, colType := range columnTypes {
 		columnHeader = append(columnHeader, colType.Name())
 		rowValue[i] = reflect.New(colType.ScanType())           // 跟据数据库参数类型，创建默认值 和类型
