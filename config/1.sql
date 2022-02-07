@@ -1,0 +1,1 @@
+select round(col1,1) as aa from t1 where id=887766;

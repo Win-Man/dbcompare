@@ -92,17 +92,23 @@ func main() {
 	}
 
 	// 从命令读取测试 SQL ，最高优先级，读取不到则读取配置文件中指定的 sql 文本地址
-	var sqlList []string
+	var sqlListSource []string
+	var sqlListDest []string
 	if sqlString != "" {
-		sqlList = append(sqlList, sqlString)
-	} else if cfg.CompareConfig.SQLFile != "" {
-		sqlList = ReadSQLFile(cfg.CompareConfig.SQLFile, cfg.CompareConfig.Delimiter)
+		sqlListSource = append(sqlListSource, sqlString)
+		sqlListDest = append(sqlListDest, sqlString)
+	} else if cfg.CompareConfig.SQLSource == "diff" && cfg.CompareConfig.SQLFileSource != "" && cfg.CompareConfig.SQLFileDest != "" {
+		sqlListSource = ReadSQLFile(cfg.CompareConfig.SQLFileSource, cfg.CompareConfig.Delimiter)
+		sqlListDest = ReadSQLFile(cfg.CompareConfig.SQLFileDest, cfg.CompareConfig.Delimiter)
+	} else if cfg.CompareConfig.SQLSource == "default" && cfg.CompareConfig.SQLFileDefault != "" {
+		sqlListSource = ReadSQLFile(cfg.CompareConfig.SQLFileDefault, cfg.CompareConfig.Delimiter)
+		sqlListDest = ReadSQLFile(cfg.CompareConfig.SQLFileDefault, cfg.CompareConfig.Delimiter)
 	} else {
 		log.Error("Please input test sql statments!!!")
 		os.Exit(1)
 	}
 	log.Debug("xxx")
-	err = compare.CompareSelect(sourcedb, destdb, sqlList, &cfg)
+	err = compare.CompareSelect(sourcedb, destdb, sqlListSource, sqlListDest, &cfg)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)

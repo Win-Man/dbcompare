@@ -49,14 +49,25 @@ func (t *Table) String() string {
 	return resStr
 }
 
-func CompareSelect(sourcedb *sql.DB, destdb *sql.DB, sqls []string, cfg *config.Config) error {
-	log.Debug(fmt.Sprintf("sqlList:%v", sqls))
+func (t *Table) ResultString() string {
+	resStr := fmt.Sprintf("%s", strings.Join(t.ColumnHeader, "\t"))
+	for _, rlist := range t.RecordList {
+		resStr = fmt.Sprintf("%s\n%s", resStr, strings.Join(rlist, "\t"))
+	}
+	return resStr
+}
+
+func CompareSelect(sourcedb *sql.DB, destdb *sql.DB, SourceSqls []string, DestSqls []string, cfg *config.Config) error {
+	log.Debug(fmt.Sprintf("SourceSqls:%v\nDestSqls:%v", SourceSqls, DestSqls))
 	log.Debug(fmt.Sprintf("source type:%s dest type:%s", cfg.CompareConfig.SourceType, cfg.CompareConfig.DestType))
 	// mysqlRows,err := DoQuery(mysqldb,sql)
 	// if err != nil{
 	// 	log.Error(err)
 	// }
 	// tidbRows,err := DoQuery(tidbdb,sql)
+	if len(SourceSqls) != len(DestSqls) {
+		log.Fatal(fmt.Scanf("The number of sqls in sqlfile-source is different with number of sqls in sqlfile-dest:%d vs %d", len(SourceSqls), len(DestSqls)))
+	}
 	timeStr := time.Now().Format("20060102150504")
 	sourceFilePath := fmt.Sprintf("%s_%s_%s", cfg.CompareConfig.OutputPrefix, timeStr, strings.ToLower(cfg.CompareConfig.SourceType))
 	destFilePath := fmt.Sprintf("%s_%s_%s", cfg.CompareConfig.OutputPrefix, timeStr, strings.ToLower(cfg.CompareConfig.DestType))
@@ -64,31 +75,33 @@ func CompareSelect(sourcedb *sql.DB, destdb *sql.DB, sqls []string, cfg *config.
 	sourceTypeStr := cfg.CompareConfig.SourceType
 	destTypeStr := cfg.CompareConfig.DestType
 	var diffSQLList []string
-	for _, sql := range sqls {
+	for i, sql := range SourceSqls {
 		var sourceTable, destTable *Table
+		var sql1 = sql
+		var sql2 = DestSqls[i]
 		var err error
 		if strings.ToLower(sourceTypeStr) == "mysql" || strings.ToLower(sourceTypeStr) == "tidb" {
-			sourceTable, err = OutPrint(sourcedb, sql)
+			sourceTable, err = OutPrint(sourcedb, sql1)
 		} else {
-			sourceTable, err = OutPrintOracle(sourcedb, sql)
+			sourceTable, err = OutPrintOracle(sourcedb, sql1)
 		}
 
 		if err != nil {
-			diffSQLList = append(diffSQLList, sql)
+			diffSQLList = append(diffSQLList, fmt.Sprintf("ERROR SOURCE SQL:\n%s\n%s", sql1, strings.Repeat("-", 20)))
 			continue
 		}
 		if strings.ToLower(destTypeStr) == "mysql" || strings.ToLower(destTypeStr) == "tidb" {
-			destTable, err = OutPrint(destdb, sql)
+			destTable, err = OutPrint(destdb, sql2)
 		} else {
-			destTable, err = OutPrintOracle(destdb, sql)
+			destTable, err = OutPrintOracle(destdb, sql2)
 		}
 		if err != nil {
-			diffSQLList = append(diffSQLList, sql)
+			diffSQLList = append(diffSQLList, fmt.Sprintf("ERROR DEST SQL:\n%s\n%s", sql2, strings.Repeat("-", 20)))
 			continue
 		}
 
-		if sourceTable.String() != destTable.String() {
-			diffSQLList = append(diffSQLList, sql)
+		if sourceTable.ResultString() != destTable.ResultString() {
+			diffSQLList = append(diffSQLList, fmt.Sprintf("DIFF SOURCE SQL:\n%s\nDIFF DEST SQL:\n%s\n%s", sql1, sql2, strings.Repeat("-", 20)))
 			log.Warn("SOURCE result is different with DEST returns")
 			log.Warn(sourceTable.String())
 			log.Warn(destTable.String())
@@ -103,7 +116,9 @@ func CompareSelect(sourcedb *sql.DB, destdb *sql.DB, sqls []string, cfg *config.
 			WriteTableFile(sourceFilePath, sourceTable)
 			WriteTableFile(destFilePath, destTable)
 		}
-		log.Info(fmt.Sprintf("Compare SQL: %s Done.", sql))
+		log.Info(fmt.Sprintf("Compare No.%d SQL Done.", i))
+		log.Debug(fmt.Sprintf("Compare Source SQL Done.%s", sql1))
+		log.Debug(fmt.Sprintf("Compare Dest SQL Done.%s", sql2))
 	}
 	if len(diffSQLList) != 0 {
 		if cfg.CompareConfig.Output == "print" {
@@ -170,8 +185,6 @@ func OutPrint(db *sql.DB, sql string) (*Table, error) {
 		columnHeader = append(columnHeader, strings.ToUpper(colType.Name()))
 		rowValue[i] = reflect.New(colType.ScanType())           // 跟据数据库参数类型，创建默认值 和类型
 		rowParam[i] = reflect.ValueOf(&rowValue[i]).Interface() // 跟据接收的数据的类型反射出值的地址
-		//fmt.Printf("%s:%s,%s\n",colType.Name(),colType.ScanType().String(),colType.DatabaseTypeName())
-		//logging.Debugf("%s:%s,%s",colType.Name(),colType.ScanType().String(),colType.DatabaseTypeName()) // 字段明称：类型，数据库类型
 	}
 	var list []map[string]string
 	outTable.ColumnHeader = columnHeader
@@ -199,16 +212,11 @@ func OutPrint(db *sql.DB, sql string) (*Table, error) {
 				}
 				valueList = append(valueList, item[colType.Name()])
 			}
-
-			//fmt.Printf("item[%s]:%+v\n", colType.Name(), item[colType.Name()])
 		}
 		list = append(list, item)
-		//fmt.Printf("%s\n", item)
 		outTable.AddRecord(valueList)
 	}
 	rows.Close()
-	//fmt.Printf("Output:\n%v\n", list)
-	//fmt.Println(outTable)
 	return &outTable, nil
 }
 
@@ -220,18 +228,14 @@ func OutPrintOracle(db *sql.DB, sql string) (*Table, error) {
 		return &outTable, err
 	}
 	columnTypes, _ := rows.ColumnTypes()
-	//fmt.Printf("columnTypes:%v\n", columnTypes)
 	var rowParam = make([]interface{}, len(columnTypes)) // 传入到 rows.Scan 的参数 数组
 	var rowValue = make([]interface{}, len(columnTypes)) // 接收数据一行列的数组
 
 	var columnHeader []string
-	//fmt.Printf("columnType:%+v", columnTypes)
 	for i, colType := range columnTypes {
 		columnHeader = append(columnHeader, colType.Name())
 		rowValue[i] = reflect.New(colType.ScanType())           // 跟据数据库参数类型，创建默认值 和类型
 		rowParam[i] = reflect.ValueOf(&rowValue[i]).Interface() // 跟据接收的数据的类型反射出值的地址
-		//fmt.Printf("%s:%s,%s\n", colType.Name(), colType.ScanType().String(), colType.DatabaseTypeName())
-		//logging.Debugf("%s:%s,%s",colType.Name(),colType.ScanType().String(),colType.DatabaseTypeName()) // 字段明称：类型，数据库类型
 	}
 	var list []map[string]string
 	outTable.ColumnHeader = columnHeader
@@ -241,7 +245,6 @@ func OutPrintOracle(db *sql.DB, sql string) (*Table, error) {
 		item := make(map[string]string)
 		var valueList []string
 		for i, colType := range columnTypes {
-			//fmt.Printf("colType:%+v colscanType:%s\n", colType, colType.ScanType().String())
 			typeName := colType.DatabaseTypeName()
 			if rowValue[i] == nil {
 				item[colType.Name()] = NILVALUE
@@ -273,14 +276,10 @@ func OutPrintOracle(db *sql.DB, sql string) (*Table, error) {
 				valueList = append(valueList, item[colType.Name()])
 			}
 
-			//fmt.Printf("item[%s]:%+v\n", colType.Name(), item[colType.Name()])
 		}
 		list = append(list, item)
-		//fmt.Printf("%s\n", item)
 		outTable.AddRecord(valueList)
 	}
 	rows.Close()
-	//fmt.Printf("Output:\n%v\n", list)
-	//fmt.Println(outTable)
 	return &outTable, nil
 }

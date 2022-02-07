@@ -25,10 +25,13 @@ service-name = "orcl"
 schema-name = ""
 
 [compare-config]
-source-type = "tidb" ## tidb|mysql|oracle
+source-type = "oracle" ## tidb|mysql|oracle
 dest-type = "oracle"
-sqlfile = "./config/a.sql"
+sql-source = "diff" ## default|diff
+sqlfile-default = "/root/dbcompare/config/a.sql"
+sqlfile-source = "/root/dbcompare/config/1.sql"
+sqlfile-dest = "/root/dbcompare/config/2.sql"
 sqlfile-delimiter = ";"
-output = "file"    ## file|print 
+output = "print"    ## file|print 
 outputprefix = "output"
 

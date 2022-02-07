@@ -52,12 +52,15 @@ type OracleDBConfig struct {
 // }
 
 type CompareConfig struct {
-	SourceType   string `toml:"source-type" json:"source-type"`
-	DestType     string `toml:"dest-type" json:"dest-type"`
-	SQLFile      string `toml:"sqlfile" json:"sqlfile"`
-	Delimiter    string `toml:"sqlfile-delimiter" json:"sqlfile-delimiter"`
-	Output       string `toml:"output" json:"output"`
-	OutputPrefix string `toml:"outputprefix" json:"outputprefix"`
+	SourceType     string `toml:"source-type" json:"source-type"`
+	DestType       string `toml:"dest-type" json:"dest-type"`
+	SQLSource      string `toml:"sql-source" json:"sql-source"`
+	SQLFileDefault string `toml:"sqlfile-default" json:"sqlfile-default"`
+	SQLFileSource  string `toml:"sqlfile-source" json:"sqlfile-source"`
+	SQLFileDest    string `toml:"sqlfile-dest" json:"sqlfile-dest"`
+	Delimiter      string `toml:"sqlfile-delimiter" json:"sqlfile-delimiter"`
+	Output         string `toml:"output" json:"output"`
+	OutputPrefix   string `toml:"outputprefix" json:"outputprefix"`
 }
 
 // InitConfig Func
