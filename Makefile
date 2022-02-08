@@ -3,6 +3,9 @@
 all: build
 
 build:
+	go build -o ./bin/dbcompare main.go
+
+linux:
 	GOOS=linux GOARCH=amd64 go build -o ./bin/dbcompare main.go
 	
 tool:
