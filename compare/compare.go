@@ -57,7 +57,7 @@ func (t *Table) ResultString() string {
 	return resStr
 }
 
-func CompareSelect(sourcedb *sql.DB, destdb *sql.DB, SourceSqls []string, DestSqls []string, cfg *config.Config) error {
+func CompareSelect(sourcedb *sql.DB, destdb *sql.DB, SourceSqls []string, DestSqls []string, cfg *config.Config, silent bool) error {
 	log.Debug(fmt.Sprintf("SourceSqls:%v\nDestSqls:%v", SourceSqls, DestSqls))
 	log.Debug(fmt.Sprintf("source type:%s dest type:%s", cfg.CompareConfig.SourceType, cfg.CompareConfig.DestType))
 	// mysqlRows,err := DoQuery(mysqldb,sql)
@@ -107,7 +107,7 @@ func CompareSelect(sourcedb *sql.DB, destdb *sql.DB, SourceSqls []string, DestSq
 			log.Warn(destTable.String())
 		}
 
-		if cfg.CompareConfig.Output == "print" {
+		if cfg.CompareConfig.Output == "print" && silent == false {
 			fmt.Printf("SOUECE output:\n")
 			fmt.Println(sourceTable)
 			fmt.Printf("DEST output:\n")
@@ -116,7 +116,7 @@ func CompareSelect(sourcedb *sql.DB, destdb *sql.DB, SourceSqls []string, DestSq
 			WriteTableFile(sourceFilePath, sourceTable)
 			WriteTableFile(destFilePath, destTable)
 		}
-		log.Info(fmt.Sprintf("Compare No.%d SQL Done.", i))
+		log.Debug(fmt.Sprintf("Compare No.%d SQL Done.", i))
 		log.Debug(fmt.Sprintf("Compare Source SQL Done.%s", sql1))
 		log.Debug(fmt.Sprintf("Compare Dest SQL Done.%s", sql2))
 	}

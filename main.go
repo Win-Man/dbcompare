@@ -108,7 +108,7 @@ func main() {
 		os.Exit(1)
 	}
 	log.Debug("xxx")
-	err = compare.CompareSelect(sourcedb, destdb, sqlListSource, sqlListDest, &cfg)
+	err = compare.CompareSelect(sourcedb, destdb, sqlListSource, sqlListDest, &cfg, false)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)

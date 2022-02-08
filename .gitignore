@@ -15,5 +15,7 @@
 # vendor/
 .vscode
 dev.toml
+roundt.toml
 *.log
 
+bin/
