@@ -21,7 +21,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-
 // [] sync-diff-o2t
 // [] sync-diff-inspector
 

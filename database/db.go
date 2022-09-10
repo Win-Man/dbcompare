@@ -14,31 +14,32 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"github.com/Win-Man/dbcompare/config"
 	"time"
+
+	"github.com/Win-Man/dbcompare/config"
 )
 
 // func init() {
 
 // }
 
-func OpenMySQLDB(dbcfg *config.DBConfig) (*sql.DB,error) {
+func OpenMySQLDB(dbcfg *config.DBConfig) (*sql.DB, error) {
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", dbcfg.User, dbcfg.Password, dbcfg.Host, dbcfg.Port, dbcfg.Database))
 	err = db.Ping()
-	if err != nil{
-		return nil,err
+	if err != nil {
+		return nil, err
 	}
 	db.SetConnMaxLifetime(5 * time.Minute)
 	db.SetConnMaxIdleTime(5 * time.Minute)
 	db.SetMaxOpenConns(300)
 	db.SetMaxIdleConns(100)
-	return db,nil
+	return db, nil
 }
 
-func DoQuery(db *sql.DB,sql string)(*sql.Rows,error){
-	rows,err := db.Query(sql)
-	if err != nil{
-		return rows,err
+func DoQuery(db *sql.DB, sql string) (*sql.Rows, error) {
+	rows, err := db.Query(sql)
+	if err != nil {
+		return rows, err
 	}
-	return rows,nil
+	return rows, nil
 }

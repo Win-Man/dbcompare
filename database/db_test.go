@@ -52,9 +52,9 @@ func TestMySQLSelect(t *testing.T) {
 
 	mysqlTable, err := compare.OutPrint(db, sqlStr)
 
-	if err != nil{
-		t.Errorf("execute sql error during query:%v",err)
+	if err != nil {
+		t.Errorf("execute sql error during query:%v", err)
 	}
 
-	fmt.Printf("%s",mysqlTable)
+	fmt.Printf("%s", mysqlTable)
 }

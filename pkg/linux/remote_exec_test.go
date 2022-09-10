@@ -12,8 +12,8 @@
 package linux
 
 import (
-	"testing"
 	"fmt"
+	"testing"
 )
 
 func TestExecCommand(t *testing.T) {
@@ -48,13 +48,11 @@ func TestExecCommand(t *testing.T) {
 	// MyClient *ssh.Client
 	// MySession *ssh.Session
 	t.Run("TestExecCommand", func(t *testing.T) {
-		myssh := Myssh{"172.16.4.69","root","pingcap!@#",22,"password","",0,nil,nil}
-		res,err := myssh.ExecCommand("cat /home/tidb/config")
-		if err != nil{
+		myssh := Myssh{"172.16.4.69", "root", "pingcap!@#", 22, "password", "", 0, nil, nil}
+		res, err := myssh.ExecCommand("cat /home/tidb/config")
+		if err != nil {
 			fmt.Println(err)
 		}
 		fmt.Println(string(res))
 	})
 }
-
-

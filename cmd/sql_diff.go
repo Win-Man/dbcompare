@@ -22,11 +22,10 @@ import (
 	"github.com/Win-Man/dbcompare/config"
 	"github.com/Win-Man/dbcompare/database"
 	"github.com/Win-Man/dbcompare/pkg/logger"
+	_ "github.com/go-sql-driver/mysql"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
-
-
 
 func newSqlDiffCmd() *cobra.Command {
 
