@@ -1,5 +1,5 @@
 /*
- * Created: 2022-09-10 16:26:53
+ * Created: 2022-09-10 11:49:54
  * Author : Win-Man
  * Email : gang.shen0423@gmail.com
  * -----
@@ -9,12 +9,4 @@
  * Description:
  */
 
-package main
-
-import (
-	"github.com/Win-Man/dbcompare/cmd"
-)
-
-func main() {
-	cmd.Execute()
-}
+package cmd
