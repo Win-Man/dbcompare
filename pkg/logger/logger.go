@@ -31,17 +31,17 @@ func GetLevel(level string) (a logrus.Level) {
 }
 
 // InitLogger Func
-func InitLogger(level string, logPath string, cfg config.Config) {
-	if level == "" && cfg.Log.Level == "" {
-		level = defaultLogPath
+func InitLogger(level string, logPath string, Log config.Log) {
+	if level == "" && Log.Level == "" {
+		level = "debug"
 	} else if level == "" {
-		level = cfg.Log.Level
+		level = Log.Level
 	}
 
-	if logPath == "" && cfg.Log.LogPath == "" {
+	if logPath == "" && Log.LogPath == "" {
 		logPath = defaultLogPath
 	} else if logPath == "" {
-		logPath = cfg.Log.LogPath
+		logPath = Log.LogPath
 	}
 
 	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
