@@ -1,0 +1,52 @@
+# Sync Diff Configuration.
+######################### Global config #########################
+log-level = "info"
+chunk-size = {{ .ChunkSize }}
+check-thread-count = {{ .CheckThreadCount }}
+sample-percent = 100
+use-checksum = true
+only-use-checksum = false
+use-checkpoint = false
+ignore-data-check = false
+ignore-struct-check = true
+
+fix-sql-file = "{{ .LogDir }}/{{ .SyncTableName }}_fix.sql"
+#fix-target = "Oracle"
+
+######################### Tables config #########################
+
+[[check-tables]]
+    schema = "{{ .TableSchema }}"
+    oracle-schema = "{{ .TableOracleSchema }}"
+    tables = ["{{ .TableName }}"]
+
+######################### Databases config #########################
+
+[[source-db]]
+    type = "Oracle"
+    user = "{{ .OracleDB.User}}"
+    password = "{{ .OracleDB.Password }}"
+    connectString = "{{ .OracleDB.Host }}:{{ .OracleDB.Port }}/{{ .OracleDB.SchemaName }}?connect_timeout=2"
+    instance-id = "source-1"
+    #charset = "zhs16gbk" 
+    {{ .SnapSource }}
+
+[target-db]
+    host = "{{ .TiDBDB.Host }}"
+    port = {{ .TiDBDB.Port }}
+    user = "{{ .TiDBDB.User }}"
+    password = "{{ .TiDBDB.Password }}"
+    instance-id = "source-2"
+    {{ .SnapTarget }}
+
+{{ if .IgnoreCols  }}
+######################### Tables config #########################
+[[table-config]]
+    schema = "{{ .TableSchema }}"
+    table = "{{ .TableName }}"
+    ignore-columns = ["{{ .IgnoreCols }}"]
+{{ end }}
+
+
+
+

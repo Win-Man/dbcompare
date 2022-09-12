@@ -34,7 +34,7 @@ func newSqlDiffCmd() *cobra.Command {
 		Short: "sql-diff",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg := config.InitConfig(configPath)
-			logger.InitLogger(logLevel, logPath, cfg)
+			logger.InitLogger(logLevel, logPath, cfg.Log)
 			log.Info("Welcome to sql-diff")
 			log.Debug(fmt.Sprintf("Flags:%+v", cmd.Flags()))
 			log.Debug(fmt.Sprintf("arguments:%s", strings.Join(args, ",")))
@@ -45,7 +45,7 @@ func newSqlDiffCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&configPath, "config", "C", "", "config file path")
-	cmd.Flags().StringVarP(&logLevel, "log-level", "L", "info", "log level: info, debug, warn, error, fatal")
+	cmd.Flags().StringVarP(&logLevel, "log-level", "L", "", "log level: info, debug, warn, error, fatal")
 	cmd.Flags().StringVar(&logPath, "log-path", "", "The path of log file")
 	cmd.Flags().StringVar(&sqlString, "sql", "", "single sql statement")
 	cmd.Flags().StringVar(&output, "output", "", "print|file")
