@@ -33,7 +33,7 @@ dumpling-bin-path = "./dumpling"
 sqlldr-bin-path = "./sqlldr"
 dump-data-dir = "./work/dump"
 concurrency = 5
-dump-extra-args = "-F 256MB"
+dump-extra-args = "--no-schemas --no-header"
 oracle-ctl-file-dir = "./work/ctl"
 ctl-template = "./config/ctl.tmpl"
 

@@ -137,7 +137,7 @@ func runDumpData(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTable
 	for task := range tasks {
 		log.Info(fmt.Sprintf("[Thread-%d]Start to dump %s.%s data", threadID, task.TableSchema, task.TableName))
 		logPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("dumpling_%s.%s.log", task.TableSchema, task.TableName))
-		cmd := fmt.Sprintf("%s -u %s -P %d -h %s -p %s --filetype csv --filter \"%s/%s\" -o %s %s> %s", cfg.SyncFixConfig.DumplingBinPath, cfg.TiDBConfig.User,
+		cmd := fmt.Sprintf("%s -u %s -P %d -h %s -p \"%s\" --filetype csv --filter \"%s.%s\" -o %s %s> %s", cfg.SyncFixConfig.DumplingBinPath, cfg.TiDBConfig.User,
 			cfg.TiDBConfig.Port, cfg.TiDBConfig.Host, cfg.TiDBConfig.Password,
 			task.TableSchema, task.TableName, cfg.SyncFixConfig.DumpDataDir,
 			cfg.SyncFixConfig.DumpExtraArgs, logPath)
@@ -157,7 +157,7 @@ func runDumpData(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTable
 
 func runGeneratorControl(cfg config.SyncDiffConfig) error {
 	var err error
-	err = os.MkdirAll(cfg.SyncFixConfig.DumpDataDir, 0755)
+	err = os.MkdirAll(cfg.SyncFixConfig.OracleCtlFileDir, 0755)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -172,7 +172,7 @@ func runGeneratorControl(cfg config.SyncDiffConfig) error {
 		go func() {
 			defer wg.Done()
 			//log.Debug(fmt.Sprintf("go func i:%d", tmpi))
-			runDumpData(cfg, tmpi, tasks)
+			runGenerator(cfg, tmpi, tasks)
 			//testFunc(tmpi, tasks)
 		}()
 	}
@@ -216,11 +216,13 @@ func runGenerator(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTabl
 			log.Error(fmt.Sprintf("Connect source database error:%v", err))
 			return err
 		}
-		querySql := fmt.Sprintf("select column_name from dba_tab_columns where owner ='%s' and table_name='%s' order by column_id;", task.TableSchemaOrale, task.TableName)
+		querySql := fmt.Sprintf("select column_name from dba_tab_columns where owner='%s' and table_name='%s' order by column_id",
+			strings.ToUpper(task.TableSchemaOrale), strings.ToUpper(task.TableName))
+		log.Debug(querySql)
 		rows, err := db.Query(querySql)
 		if err != nil {
 			log.Error(err)
-			os.Exit(1)
+			continue
 		}
 		colNames := make([]string, 0)
 		for rows.Next() {
@@ -234,8 +236,13 @@ func runGenerator(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTabl
 		}
 
 		ctltmpl := CtlTemplate{
-			Character: "UTF8",
-			FilePath:  filepath.Join(cfg.SyncFixConfig.DumpDataDir, fmt.Sprintf("%s.%s.000000000.csv", task.TableSchema, task.TableName)),
+			Character:         "UTF8",
+			FilePath:          filepath.Join(cfg.SyncFixConfig.DumpDataDir, fmt.Sprintf("%s.%s.000000000.csv", task.TableSchema, task.TableName)),
+			BadFilePath:       filepath.Join(cfg.SyncFixConfig.OracleCtlFileDir, fmt.Sprintf("%s.%s.bad", task.TableSchemaOrale, task.TableName)),
+			DiscardFilePath:   filepath.Join(cfg.SyncFixConfig.OracleCtlFileDir, fmt.Sprintf("%s.%s.disc", task.TableSchemaOrale, task.TableName)),
+			TableOracleSchema: task.TableSchemaOrale,
+			TableName:         task.TableName,
+			Columns:           strings.Join(colNames, ","),
 		}
 		ctlFilePath := filepath.Join(cfg.SyncFixConfig.OracleCtlFileDir, fmt.Sprintf("%s.%s.ctl", task.TableSchemaOrale, task.TableName))
 		f, err := os.Create(ctlFilePath)
@@ -266,7 +273,7 @@ func runLoadControl(cfg config.SyncDiffConfig) error {
 		tmpi := i
 		go func() {
 			defer wg.Done()
-			runDumpData(cfg, tmpi, tasks)
+			runLoad(cfg, tmpi, tasks)
 
 		}()
 	}
@@ -301,7 +308,7 @@ func runLoad(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTableInfo
 	for task := range tasks {
 		log.Info(fmt.Sprintf("[Thread-%d]Start to sqlldr load data %s.%s", threadID, task.TableSchemaOrale, task.TableName))
 		ctlFilePath := filepath.Join(cfg.SyncFixConfig.OracleCtlFileDir, fmt.Sprintf("%s.%s.ctl", task.TableSchemaOrale, task.TableName))
-		logPath := filepath.Join(cfg.Log.LogPath, fmt.Sprintf("sqlldr_load_%s.%s.log", task.TableSchemaOrale, task.TableName))
+		logPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sqlldr_load_%s.%s.log", task.TableSchemaOrale, task.TableName))
 		cmd := fmt.Sprintf("%s %s/%s control=%s > %s", cfg.SyncFixConfig.SqlldrBinPath, cfg.OracleConfig.User, cfg.OracleConfig.Password, ctlFilePath, logPath)
 		c := exec.Command("bash", "-c", cmd)
 		// cmdTest := fmt.Sprintf("%s %s", binPath, confPath)
