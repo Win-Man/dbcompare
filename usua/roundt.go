@@ -50,7 +50,7 @@ func main() {
 	}
 	cfg := config.InitConfig(configPath)
 	// initialize log
-	logger.InitLogger(cfg.Log.Level, cfg.Log.LogPath, cfg)
+	logger.InitLogger(cfg.Log.Level, cfg.Log.LogPath, cfg.Log)
 	log.Info("Welcome to roundt")
 
 	var tidbdb *sql.DB
