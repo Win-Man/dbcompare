@@ -18,6 +18,7 @@ type SyncDiffConfig struct {
 	TiDBConfig    DBConfig          `toml:"tidb-config" json:"tidb-config"`
 	OracleConfig  OracleDBConfig    `toml:"oracle-config" json:"oracle-config"`
 	SyncCtlConfig SyncControlConfig `toml:"sync-ctl-config" json:"sync-ctl-config"`
+	SyncFixConfig SyncFix           `toml:"sync-fix-config" json:"sync-fix-config"`
 }
 
 type SyncControlConfig struct {
@@ -25,7 +26,16 @@ type SyncControlConfig struct {
 	Concurrency  int    `toml:"concurrency" json:"concurrency"`
 	BinPath      string `toml:"bin-path" json:"bin-path"`
 	SyncTemplate string `toml:"sync-template" json:"sync-template"`
-	LogDir       string `toml:"log-dir" json:"log-dir"`
+}
+
+type SyncFix struct {
+	DumplingBinPath  string `toml:"dumpling-bin-path" json:"dumpling-bin-path"`
+	DumpDataDir      string `toml:"dump-data-dir" json:"dump-data=dir"`
+	Concurrency      int    `toml:"concurrency" json:"concurrency"`
+	DumpExtraArgs    string `toml:"dump-extra-args" json:"dump-extra-args"`
+	OracleCtlFileDir string `toml:"oracle-ctl-file-dir" json:"oracle-ctl-file-dir"`
+	CtlTemplate      string `toml:"ctl-template" json:"ctl-template"`
+	SqlldrBinPath    string `toml:"sqlldr-bin-path" json:"sqlldr-bin-path"`
 }
 
 // InitConfig Func

@@ -201,7 +201,7 @@ func runSyncDiffControl(cfg config.SyncDiffConfig) error {
 		log.Error(err)
 		return err
 	}
-	os.MkdirAll(cfg.SyncCtlConfig.LogDir, 0755)
+	os.MkdirAll(cfg.Log.LogDir, 0755)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -345,8 +345,8 @@ func runSyncDiff(cfg config.SyncDiffConfig, threadID int, tasks <-chan int) erro
 		generateSyncDiffConfig(tableSchema, tableName, tableSchemaTarget, ignoreColumns,
 			cfg.SyncCtlConfig.ConfDir, chunk_size, check_thread_count, snapshot_source, snapshot_target, cfg)
 		//Do sync-diff
-		confPath := filepath.Join(cfg.SyncCtlConfig.ConfDir, fmt.Sprintf("%s.%s.toml", tableSchema, tableName))
-		logPath := filepath.Join(cfg.SyncCtlConfig.LogDir, fmt.Sprintf("%s.%s.log", tableSchema, tableName))
+		confPath := filepath.Join(cfg.SyncCtlConfig.ConfDir, fmt.Sprintf("sync_diff_%s.%s.toml", tableSchema, tableName))
+		logPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sync_diff_%s.%s.log", tableSchema, tableName))
 		rtCode := runSyncDiffTask(cfg.SyncCtlConfig.BinPath, confPath, logPath)
 
 		syncEndTime := time.Now()
@@ -411,17 +411,17 @@ func generateSyncDiffConfig(tableSchema string, tableName string, tableSchemaTar
 		TiDBDB:            cfg.TiDBConfig,
 		SnapSource:        snapSource,
 		SnapTarget:        snapTarget,
-		LogDir:            cfg.SyncCtlConfig.LogDir,
+		LogDir:            cfg.Log.LogDir,
 	}
 	if ignoreCols != "" {
 		syncdifftmp.IgnoreCols = strings.Replace(ignoreCols, ",", "\",\"", -1)
 	}
-	f, err := os.Create(filepath.Join(cfg.SyncCtlConfig.ConfDir, fmt.Sprintf("%s.%s.toml", tableSchema, tableName)))
+	f, err := os.Create(filepath.Join(cfg.SyncCtlConfig.ConfDir, fmt.Sprintf("sync_diff_%s.%s.toml", tableSchema, tableName)))
+	defer f.Close()
 	if err != nil {
 		log.Error(err)
 		return err
 	}
-	defer f.Close()
 
 	tpl.Execute(f, syncdifftmp)
 

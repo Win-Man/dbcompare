@@ -1,0 +1,7 @@
+load data 
+CHARACTERSET {{ .Character }}
+infile "{{ .FilePath }}"
+badfile "{{ .BadFilePath }}"
+discardfile "{{ .DiscardFilePath }}"
+APPEND INTO TABLE {{ .TableOracleSchema }}.{{ .TableName }}
+fields terminated by "{{ .Terminator }}" trailing nullcols({{ .Columns }});

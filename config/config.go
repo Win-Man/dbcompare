@@ -24,6 +24,7 @@ type Config struct {
 type Log struct {
 	Level   string `toml:"log-level" json:"log-level"`
 	LogPath string `toml:"log-path" json:"log-path"`
+	LogDir  string `toml:"log-dir" json:"log-dir"`
 }
 
 type DBConfig struct {

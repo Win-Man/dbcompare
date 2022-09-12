@@ -1,6 +1,7 @@
 [log]
 log-level = "debug"
 log-path = "dbcompare.log"
+log-dir = "./work/log"
 
 
 [tidb-config]
@@ -24,7 +25,17 @@ sync-template = "./config/sync-diff-config.tmpl"
 conf-dir = "./work/conf"
 concurrency = 3
 bin-path = "./work/bin/o2t-sync-diff"
-log-dir = "./work/log"
+
+
+
+[sync-fix-config]
+dumpling-bin-path = "./dumpling"
+sqlldr-bin-path = "./sqlldr"
+dump-data=dir = "./work/dump"
+concurrency = 5
+dump-extra-args = "-F 256MB"
+oracle-ctl-file-dir = "./work/ctl"
+ctl-template = "./config/ctl.tmpl"
 
 
 
