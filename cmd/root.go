@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Win-Man/dbcompare/service"
 	"github.com/spf13/cobra"
 )
 
@@ -31,6 +32,7 @@ var logLevel string
 var logPath string
 var sqlString string
 var output string
+var version bool
 
 // Execute executes the root command.
 func Execute() error {
@@ -44,11 +46,17 @@ func init() {
 		Use:   "dbcompare",
 		Short: "dbcompare command tool",
 		Long:  `A command tool for database compare`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			service.GetAppVersion(version)
+
+			return nil
+		},
 	}
 
 	// rootCmd.PersistentFlags().Int64Var(&timeout, "timeout", 5, "Timeout in seconds to execute")
 	// rootCmd.PersistentFlags().BoolVarP(&isTest, "yes", "y", false, "run test")
 	rootCmd.AddCommand(newSqlDiffCmd(), newSyncDiffCmd(), newSyncFixCmd())
+	rootCmd.Flags().BoolVarP(&version, "version", "V", false, "view dbcompare version")
 
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.cobra.yaml)")
 	// rootCmd.PersistentFlags().StringP("author", "a", "YOUR NAME", "author name for copyright attribution")

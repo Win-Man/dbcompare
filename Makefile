@@ -1,12 +1,33 @@
 .PHONY: build clean tool lint help
 
+REPO    := github.com/Win-Man/dbcompare
+
+GOOS    := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
+GOARCH  := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
+GOENV   := GO111MODULE=on CGO_ENABLED=1 GOOS=$(GOOS) GOARCH=$(GOARCH)
+GO      := $(GOENV) go
+GOBUILD := $(GO) build
+GORUN   := $(GO) run
+SHELL   := /usr/bin/env bash
+
+COMMIT  := $(shell git describe --always --no-match --tags --dirty="-dev")
+BUILDTS := $(shell date -u '+%Y-%m-%d %H:%M:%S')
+GITHASH := $(shell git rev-parse HEAD)
+GITREF  := $(shell git rev-parse --abbrev-ref HEAD)
+
+LDFLAGS := -w -s
+LDFLAGS += -X "$(REPO)/service.Version=$(COMMIT)"
+LDFLAGS += -X "$(REPO)/service.BuildTS=$(BUILDTS)"
+LDFLAGS += -X "$(REPO)/service.GitHash=$(GITHASH)"
+LDFLAGS += -X "$(REPO)/service.GitBranch=$(GITREF)"
+
 all: build
 
 build:
-	go build -o ./bin/dbcompare main.go
+	$(GOBUILD) -ldflags '$(LDFLAGS)'  -o ./bin/dbcompare main.go
 
 linux:
-	GOOS=linux GOARCH=amd64 go build -o ./bin/dbcompare main.go
+	GOOS=linux GOARCH=amd64 $(GOBUILD) -ldflags '$(LDFLAGS)'  -o ./bin/dbcompare main.go
 	
 tool:
 	go tool vet . |& grep -v vendor; true
