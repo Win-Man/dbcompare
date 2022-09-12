@@ -31,7 +31,7 @@ bin-path = "./work/bin/o2t-sync-diff"
 [sync-fix-config]
 dumpling-bin-path = "./dumpling"
 sqlldr-bin-path = "./sqlldr"
-dump-data=dir = "./work/dump"
+dump-data-dir = "./work/dump"
 concurrency = 5
 dump-extra-args = "-F 256MB"
 oracle-ctl-file-dir = "./work/ctl"

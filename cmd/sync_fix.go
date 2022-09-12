@@ -111,7 +111,7 @@ func runDumpDataControl(cfg config.SyncDiffConfig) error {
 		log.Error(fmt.Sprintf("Connect source database error:%v", err))
 		return err
 	}
-	querysql := fmt.Sprintf(`SELECT id,table_schema,table_name,ifnull((table_schema_oracle,table_schema) FROM %s.syncdiff_config_result where sync_status='compare_fail'`, cfg.TiDBConfig.Database)
+	querysql := fmt.Sprintf(`SELECT id,table_schema,table_name,ifnull(table_schema_oracle,table_schema) FROM %s.syncdiff_config_result where sync_status='compare_fail'`, cfg.TiDBConfig.Database)
 	var dumpRow DumpTableInfo
 	rows, err := db.Query(querysql)
 	if err != nil {
@@ -137,8 +137,10 @@ func runDumpData(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTable
 	for task := range tasks {
 		log.Info(fmt.Sprintf("[Thread-%d]Start to dump %s.%s data", threadID, task.TableSchema, task.TableName))
 		logPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("dumpling_%s.%s.log", task.TableSchema, task.TableName))
-		cmd := fmt.Sprintf("%s -u %s -P %d -h %s -p %s --filetype csv --filter \"%s/%s\" -o %s > %s", cfg.SyncFixConfig.DumplingBinPath, cfg.TiDBConfig.User,
-			cfg.TiDBConfig.Port, cfg.TiDBConfig.Host, cfg.TiDBConfig.Password, task.TableSchema, task.TableName, cfg.SyncFixConfig.DumpDataDir, logPath)
+		cmd := fmt.Sprintf("%s -u %s -P %d -h %s -p %s --filetype csv --filter \"%s/%s\" -o %s %s> %s", cfg.SyncFixConfig.DumplingBinPath, cfg.TiDBConfig.User,
+			cfg.TiDBConfig.Port, cfg.TiDBConfig.Host, cfg.TiDBConfig.Password,
+			task.TableSchema, task.TableName, cfg.SyncFixConfig.DumpDataDir,
+			cfg.SyncFixConfig.DumpExtraArgs, logPath)
 		c := exec.Command("bash", "-c", cmd)
 		output, err := c.CombinedOutput()
 		if err != nil {
@@ -181,7 +183,7 @@ func runGeneratorControl(cfg config.SyncDiffConfig) error {
 		log.Error(fmt.Sprintf("Connect source database error:%v", err))
 		return err
 	}
-	querysql := fmt.Sprintf(`SELECT id,table_schema,table_name,ifnull((table_schema_oracle,table_schema) FROM %s.syncdiff_config_result where sync_status='compare_fail'`, cfg.TiDBConfig.Database)
+	querysql := fmt.Sprintf(`SELECT id,table_schema,table_name,ifnull(table_schema_oracle,table_schema) FROM %s.syncdiff_config_result where sync_status='compare_fail'`, cfg.TiDBConfig.Database)
 	var dumpRow DumpTableInfo
 	rows, err := db.Query(querysql)
 	if err != nil {
@@ -275,7 +277,7 @@ func runLoadControl(cfg config.SyncDiffConfig) error {
 		log.Error(fmt.Sprintf("Connect source database error:%v", err))
 		return err
 	}
-	querysql := fmt.Sprintf(`SELECT id,table_schema,table_name FROM %s.syncdiff_config_result where sync_status='compare_fail'`, cfg.TiDBConfig.Database)
+	querysql := fmt.Sprintf(`SELECT id,table_schema,table_name,ifnull(table_schema_oracle,table_schema) FROM %s.syncdiff_config_result where sync_status='compare_fail'`, cfg.TiDBConfig.Database)
 	var dumpRow DumpTableInfo
 	rows, err := db.Query(querysql)
 	if err != nil {
@@ -283,7 +285,7 @@ func runLoadControl(cfg config.SyncDiffConfig) error {
 		os.Exit(1)
 	}
 	for rows.Next() {
-		rows.Scan(&dumpRow.Id, &dumpRow.TableSchema, &dumpRow.TableName)
+		rows.Scan(&dumpRow.Id, &dumpRow.TableSchema, &dumpRow.TableName, &dumpRow.TableSchemaOrale)
 		tasks <- dumpRow
 	}
 
