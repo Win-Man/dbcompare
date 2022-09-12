@@ -70,7 +70,7 @@ func newSyncDiffCmd() *cobra.Command {
 				}
 				log.Info("Finished without errors.")
 				fmt.Printf("Create table success.\nPls init table data,refer sql:\n")
-				fmt.Printf(fmt.Sprintf("insert into %s.syncdiff_config_result(table_schema,table_name,sync_status) select table_schema,table_name,'waiting' from information_schema.tables where table_name='t1' limit 1", cfg.TiDBConfig.Database))
+				fmt.Printf(fmt.Sprintf("insert into %s.syncdiff_config_result(table_schema,table_name,sync_status) select table_schema,table_name,'waiting' from information_schema.tables where table_schema='mydb' \n", cfg.TiDBConfig.Database))
 			case "run":
 				runSyncDiffControl(cfg)
 			default:
@@ -365,19 +365,18 @@ func runSyncDiff(cfg config.SyncDiffConfig, threadID int, tasks <-chan int) erro
 		}
 
 		// update from summary
-		stmtUpdt2 := fmt.Sprintf(`
-		update %s.syncdiff_config_result t1
-		inner join sync_diff_inspector.summary t2 
-			on t1.table_schema = t2.schema
-			and t1.table_name = t2.table 
-		set t1.chunk_num = t2.chunk_num,
-			t1.check_success_num = t2.check_success_num,
-			t1.check_failed_num = t2.check_failed_num,
-			t1.check_ignore_num = t2.check_ignore_num,
-			t1.state = t2.state,
-			t1.config_hash = t2.config_hash,
-			t1.update_time = t2.update_time
-		where id = %d'`, cfg.TiDBConfig.Database, taskid)
+		stmtUpdt2 := fmt.Sprintf(`update %s.syncdiff_config_result t1
+			inner join sync_diff_inspector.summary t2 
+				on t1.table_schema = t2.schema
+				and t1.table_name = t2.table 
+			set t1.chunk_num = t2.chunk_num,
+				t1.check_success_num = t2.check_success_num,
+				t1.check_failed_num = t2.check_failed_num,
+				t1.check_ignore_num = t2.check_ignore_num,
+				t1.state = t2.state,
+				t1.config_hash = t2.config_hash,
+				t1.update_time = t2.update_time
+			where id = %d`, cfg.TiDBConfig.Database, taskid)
 		_, err = db.Exec(stmtUpdt2)
 		if err != nil {
 			log.Error(fmt.Sprintf("[Thread-%d]Update sync summary log failed. error:%v", threadID, err))
@@ -439,7 +438,8 @@ func runSyncDiffTask(binPath string, confPath string, logPath string) string {
 	// c := exec.Command("bash", "-c", cmdTest)
 	output, err := c.CombinedOutput()
 	if err != nil {
-		log.Error(fmt.Sprintf("Run command:%s failed. error:%s", cmd, output))
+		log.Error(fmt.Sprintf("Run command:%s failed. Check log:%s", cmd, logPath))
+		log.Error(fmt.Sprintf("Run command stderr:%s", output))
 		rtCode = "compare_fail"
 	} else {
 		log.Info(fmt.Sprintf("Run command:%s success.", cmd))
@@ -447,5 +447,3 @@ func runSyncDiffTask(binPath string, confPath string, logPath string) string {
 	}
 	return rtCode
 }
-
-

@@ -26,7 +26,7 @@ fix-sql-file = "{{ .LogDir }}/{{ .SyncTableName }}_fix.sql"
     type = "Oracle"
     user = "{{ .OracleDB.User}}"
     password = "{{ .OracleDB.Password }}"
-    connectString = "{{ .OracleDB.Host }}:{{ .OracleDB.Port }}/{{ .OracleDB.SchemaName }}?connect_timeout=2"
+    connectString = "{{ .OracleDB.Host }}:{{ .OracleDB.Port }}/{{ .OracleDB.ServiceName }}"
     instance-id = "source-1"
     #charset = "zhs16gbk" 
     {{ .SnapSource }}
