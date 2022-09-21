@@ -68,11 +68,15 @@ func newSyncDiffCmd() *cobra.Command {
 					log.Error(err)
 					os.Exit(1)
 				}
-				log.Info("Finished without errors.")
+				log.Info("Finished prepare without errors.")
 				fmt.Printf("Create table success.\nPls init table data,refer sql:\n")
 				fmt.Printf(fmt.Sprintf("insert into %s.syncdiff_config_result(table_schema,table_name,sync_status) select table_schema,table_name,'waiting' from information_schema.tables where table_schema='mydb' \n", cfg.TiDBConfig.Database))
 			case "run":
-				runSyncDiffControl(cfg)
+				err := runSyncDiffControl(cfg)
+				if err != nil {
+					log.Error(err)
+					os.Exit(1)
+				}
 			default:
 				return cmd.Help()
 			}
@@ -231,7 +235,7 @@ func runSyncDiffControl(cfg config.SyncDiffConfig) error {
 	rows, err := db.Query(querysql)
 	if err != nil {
 		log.Error(err)
-		os.Exit(1)
+		return err
 	}
 	for rows.Next() {
 		rows.Scan(&rowid)
@@ -257,7 +261,7 @@ func testFunc(threadID int, tasks <-chan int) {
 	}
 }
 
-func runSyncDiff(cfg config.SyncDiffConfig, threadID int, tasks <-chan int) error {
+func runSyncDiff(cfg config.SyncDiffConfig, threadID int, tasks <-chan int) {
 
 	for taskid := range tasks {
 		log.Info(fmt.Sprintf("[Thread-%d]Start to run sync diff for id:%d", threadID, taskid))
@@ -267,7 +271,7 @@ func runSyncDiff(cfg config.SyncDiffConfig, threadID int, tasks <-chan int) erro
 		defer db.Close()
 		if err != nil {
 			log.Error(fmt.Sprintf("[Thread-%d]Connect source database error:%v", threadID, err))
-			return err
+			continue
 		}
 		stmtQuery := fmt.Sprintf(`
             select concat(table_schema,'.',table_name),ifnull(ignore_columns,'') 
@@ -342,8 +346,12 @@ func runSyncDiff(cfg config.SyncDiffConfig, threadID int, tasks <-chan int) erro
 		log.Info(fmt.Sprintf("[Thread-%d]id:%d table %s count in tidb:%d", threadID, taskid, syncTableName, rowCount))
 		syncStartTime := time.Now()
 		//Generate sync condig
-		generateSyncDiffConfig(tableSchema, tableName, tableSchemaTarget, ignoreColumns,
+		err = generateSyncDiffConfig(tableSchema, tableName, tableSchemaTarget, ignoreColumns,
 			cfg.SyncCtlConfig.ConfDir, chunk_size, check_thread_count, snapshot_source, snapshot_target, cfg)
+		if err != nil {
+			log.Error(fmt.Sprintf("[Thread-%d]GenerateSyncDiffConfig error:%v", threadID, err))
+			continue
+		}
 		//Do sync-diff
 		confPath := filepath.Join(cfg.SyncCtlConfig.ConfDir, fmt.Sprintf("sync_diff_%s.%s.toml", tableSchema, tableName))
 		logPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sync_diff_%s.%s.log", tableSchema, tableName))
@@ -388,8 +396,6 @@ func runSyncDiff(cfg config.SyncDiffConfig, threadID int, tasks <-chan int) erro
 		log.Info(fmt.Sprintf("[Thread-%d]Finished run sync diff for id:%d %s.%s", threadID, taskid, tableSchema, tableName))
 
 	}
-
-	return nil
 }
 
 func generateSyncDiffConfig(tableSchema string, tableName string, tableSchemaTarget string, ignoreCols string,
@@ -399,6 +405,7 @@ func generateSyncDiffConfig(tableSchema string, tableName string, tableSchemaTar
 	tpl, err := template.ParseFiles(cfg.SyncCtlConfig.SyncTemplate)
 	if err != nil {
 		log.Error(fmt.Sprintf("template parsefiles failed,err:%v", err))
+		return err
 	}
 	syncdifftmp := SyncDiffTemplate{
 		ChunkSize:         chunkSize,
@@ -423,7 +430,11 @@ func generateSyncDiffConfig(tableSchema string, tableName string, tableSchemaTar
 		return err
 	}
 
-	tpl.Execute(f, syncdifftmp)
+	err = tpl.Execute(f, syncdifftmp)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
 
 	return nil
 }

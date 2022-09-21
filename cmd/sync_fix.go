@@ -55,15 +55,39 @@ func newSyncFixCmd() *cobra.Command {
 			log.Debug(fmt.Sprintf("arguments:%s", strings.Join(args, ",")))
 			switch args[0] {
 			case "dump-data":
-				runDumpDataControl(cfg)
+				err := runDumpDataControl(cfg)
+				if err != nil {
+					log.Error(err)
+					os.Exit(1)
+				}
 			case "generate-ctl":
-				runGeneratorControl(cfg)
+				err := runGeneratorControl(cfg)
+				if err != nil {
+					log.Error(err)
+					os.Exit(1)
+				}
 			case "load-data":
-				runLoadControl(cfg)
+				err := runLoadControl(cfg)
+				if err != nil {
+					log.Error(err)
+					os.Exit(1)
+				}
 			case "all":
-				runDumpDataControl(cfg)
-				runGeneratorControl(cfg)
-				runLoadControl(cfg)
+				err := runDumpDataControl(cfg)
+				if err != nil {
+					log.Error(err)
+					os.Exit(1)
+				}
+				err = runGeneratorControl(cfg)
+				if err != nil {
+					log.Error(err)
+					os.Exit(1)
+				}
+				err = runLoadControl(cfg)
+				if err != nil {
+					log.Error(err)
+					os.Exit(1)
+				}
 			default:
 				return cmd.Help()
 			}
@@ -87,7 +111,6 @@ func runDumpDataControl(cfg config.SyncDiffConfig) error {
 	var err error
 	err = os.MkdirAll(cfg.SyncFixConfig.DumpDataDir, 0755)
 	if err != nil {
-		log.Error(err)
 		return err
 	}
 
@@ -115,8 +138,7 @@ func runDumpDataControl(cfg config.SyncDiffConfig) error {
 	var dumpRow DumpTableInfo
 	rows, err := db.Query(querysql)
 	if err != nil {
-		log.Error(err)
-		os.Exit(1)
+		return err
 	}
 	for rows.Next() {
 		rows.Scan(&dumpRow.Id, &dumpRow.TableSchema, &dumpRow.TableName, &dumpRow.TableSchemaOrale)
@@ -133,7 +155,7 @@ func runDumpDataControl(cfg config.SyncDiffConfig) error {
 	return nil
 }
 
-func runDumpData(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTableInfo) error {
+func runDumpData(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTableInfo) {
 	for task := range tasks {
 		log.Info(fmt.Sprintf("[Thread-%d]Start to dump %s.%s data", threadID, task.TableSchema, task.TableName))
 		logPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("dumpling_%s.%s.log", task.TableSchema, task.TableName))
@@ -152,7 +174,7 @@ func runDumpData(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTable
 		}
 		log.Info(fmt.Sprintf("[Thread-%d]Finished dump %s.%s data", threadID, task.TableSchema, task.TableName))
 	}
-	return nil
+
 }
 
 func runGeneratorControl(cfg config.SyncDiffConfig) error {
@@ -187,8 +209,7 @@ func runGeneratorControl(cfg config.SyncDiffConfig) error {
 	var dumpRow DumpTableInfo
 	rows, err := db.Query(querysql)
 	if err != nil {
-		log.Error(err)
-		os.Exit(1)
+		return err
 	}
 	for rows.Next() {
 		rows.Scan(&dumpRow.Id, &dumpRow.TableSchema, &dumpRow.TableName, &dumpRow.TableSchemaOrale)
@@ -205,7 +226,7 @@ func runGeneratorControl(cfg config.SyncDiffConfig) error {
 	return nil
 }
 
-func runGenerator(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTableInfo) error {
+func runGenerator(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTableInfo) {
 	for task := range tasks {
 		log.Info(fmt.Sprintf("Start to generate oracle sqlldr ctl file for %s.%s", task.TableSchema, task.TableName))
 		var db *sql.DB
@@ -214,7 +235,7 @@ func runGenerator(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTabl
 		defer db.Close()
 		if err != nil {
 			log.Error(fmt.Sprintf("Connect source database error:%v", err))
-			return err
+			continue
 		}
 		querySql := fmt.Sprintf("select column_name from dba_tab_columns where owner='%s' and table_name='%s' order by column_id",
 			strings.ToUpper(task.TableSchemaOrale), strings.ToUpper(task.TableName))
@@ -233,6 +254,7 @@ func runGenerator(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTabl
 		tpl, err := template.ParseFiles(cfg.SyncFixConfig.CtlTemplate)
 		if err != nil {
 			log.Error(fmt.Sprintf("template parsefiles failed,err:%v", err))
+			continue
 		}
 
 		ctltmpl := CtlTemplate{
@@ -249,12 +271,16 @@ func runGenerator(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTabl
 		defer f.Close()
 		if err != nil {
 			log.Error(err)
-			return err
+			continue
 		}
-		tpl.Execute(f, ctltmpl)
+		err = tpl.Execute(f, ctltmpl)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
 
 	}
-	return nil
+
 }
 
 func runLoadControl(cfg config.SyncDiffConfig) error {
@@ -289,7 +315,7 @@ func runLoadControl(cfg config.SyncDiffConfig) error {
 	rows, err := db.Query(querysql)
 	if err != nil {
 		log.Error(err)
-		os.Exit(1)
+		return err
 	}
 	for rows.Next() {
 		rows.Scan(&dumpRow.Id, &dumpRow.TableSchema, &dumpRow.TableName, &dumpRow.TableSchemaOrale)
@@ -317,6 +343,7 @@ func runLoad(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTableInfo
 		if err != nil {
 			log.Error(fmt.Sprintf("Run command:%s failed. Check log:%s", cmd, logPath))
 			log.Error(fmt.Sprintf("Run command stderr:%s", output))
+			continue
 
 		} else {
 			log.Info(fmt.Sprintf("Run command:%s success.", cmd))
