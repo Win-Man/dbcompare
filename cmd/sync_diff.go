@@ -47,6 +47,8 @@ type SyncDiffTemplate struct {
 	LogDir            string
 }
 
+var batchid string
+
 func newSyncDiffCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
@@ -199,6 +201,7 @@ func createConfigTables(cfg config.SyncDiffConfig) error {
 
 func runSyncDiffControl(cfg config.SyncDiffConfig) error {
 	//generateSyncDiffConfig("dbdb", "tabletable")
+	batchid = time.Now().Format("20060102112233")
 	var err error
 	err = os.MkdirAll(cfg.SyncCtlConfig.ConfDir, 0755)
 	if err != nil {
@@ -318,7 +321,6 @@ func runSyncDiff(cfg config.SyncDiffConfig, threadID int, tasks <-chan int) {
 			snapshot_source = ""
 			snapshot_target = ""
 		}
-		//TODO set remark and batchid
 		stmt_updt0 := fmt.Sprintf(`
 			update %s.syncdiff_config_result
 			set batchid = '%s',
@@ -326,12 +328,12 @@ func runSyncDiff(cfg config.SyncDiffConfig, threadID int, tasks <-chan int) {
 				sync_status = 'running',
 				sync_starttime = null,
 				sync_endtime = null ,
-				remark = '%s',
+				remark = '%d',
 				chunk_num = null,
 				check_success_num = null,
 				check_failed_num = null,
 				check_ignore_num = null
-			where id=%d`, cfg.TiDBConfig.Database, "batchid", "pidremark", taskid)
+			where id=%d`, cfg.TiDBConfig.Database, batchid, threadID, taskid)
 		db.Exec(stmt_updt0)
 		log.Info(fmt.Sprintf("[Thread-%d]Finish update config to running id:%d %s", threadID, taskid, syncTableName))
 		stmtQuery = fmt.Sprintf("select count(1) from %s t", syncTableName)
