@@ -72,7 +72,7 @@ func newSyncDiffCmd() *cobra.Command {
 				}
 				log.Info("Finished prepare without errors.")
 				fmt.Printf("Create table success.\nPls init table data,refer sql:\n")
-				fmt.Printf(fmt.Sprintf("insert into %s.syncdiff_config_result(table_schema,table_name,sync_status) select table_schema,table_name,'waiting' from information_schema.tables where table_schema='mydb' \n", cfg.TiDBConfig.Database))
+				fmt.Printf(fmt.Sprintf("insert into %s.syncdiff_config_result(table_schema,table_name,sync_status) select table_schema,table_name,'%s' from information_schema.tables where table_schema='mydb' \n", cfg.TiDBConfig.Database, SyncWaiting))
 			case "run":
 				err := runSyncDiffControl(cfg)
 				if err != nil {
@@ -233,7 +233,7 @@ func runSyncDiffControl(cfg config.SyncDiffConfig) error {
 		log.Error(fmt.Sprintf("Connect source database error:%v", err))
 		return err
 	}
-	querysql := fmt.Sprintf(`SELECT id FROM %s.syncdiff_config_result where sync_status='waiting'`, cfg.TiDBConfig.Database)
+	querysql := fmt.Sprintf(`SELECT id FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, SyncWaiting)
 	var rowid int
 	rows, err := db.Query(querysql)
 	if err != nil {
@@ -282,12 +282,12 @@ func runSyncDiff(cfg config.SyncDiffConfig, threadID int, tasks <-chan int) {
                   ,ifnull(chunk_size,1000),ifnull(check_thread_count,10)
                   ,ifnull(use_snapshot,'NO'),snapshot_source,snapshot_target
             from %s.syncdiff_config_result t 
-            where sync_status='waiting' and id = %d
-            `, cfg.TiDBConfig.Database, taskid)
+            where sync_status='%s' and id = %d
+            `, cfg.TiDBConfig.Database, SyncWaiting, taskid)
 
 		rows, err := db.Query(stmtQuery)
 		if err == sql.ErrNoRows {
-			log.Info(fmt.Sprintf("[Thread-%d]id:%d sync_status != waiting", threadID, taskid))
+			log.Info(fmt.Sprintf("[Thread-%d]id:%d sync_status != %s", threadID, taskid, SyncWaiting))
 			continue
 		} else if err != nil {
 			log.Error(err)
@@ -325,7 +325,7 @@ func runSyncDiff(cfg config.SyncDiffConfig, threadID int, tasks <-chan int) {
 			update %s.syncdiff_config_result
 			set batchid = '%s',
 				job_starttime = now(),
-				sync_status = 'running',
+				sync_status = '%s',
 				sync_starttime = null,
 				sync_endtime = null ,
 				remark = '%d',
@@ -333,7 +333,7 @@ func runSyncDiff(cfg config.SyncDiffConfig, threadID int, tasks <-chan int) {
 				check_success_num = null,
 				check_failed_num = null,
 				check_ignore_num = null
-			where id=%d`, cfg.TiDBConfig.Database, batchid, threadID, taskid)
+			where id=%d`, cfg.TiDBConfig.Database, batchid, SyncRunning, threadID, taskid)
 		db.Exec(stmt_updt0)
 		log.Info(fmt.Sprintf("[Thread-%d]Finish update config to running id:%d %s", threadID, taskid, syncTableName))
 		stmtQuery = fmt.Sprintf("select count(1) from %s t", syncTableName)
@@ -453,10 +453,10 @@ func runSyncDiffTask(binPath string, confPath string, logPath string) string {
 	if err != nil {
 		log.Error(fmt.Sprintf("Run command:%s failed. Check log:%s", cmd, logPath))
 		log.Error(fmt.Sprintf("Run command stderr:%s", output))
-		rtCode = "compare_fail"
+		rtCode = CompareFailed
 	} else {
 		log.Info(fmt.Sprintf("Run command:%s success.", cmd))
-		rtCode = "compare_succ"
+		rtCode = CompareSuccess
 	}
 	return rtCode
 }
