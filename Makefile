@@ -24,10 +24,7 @@ LDFLAGS += -X "$(REPO)/service.GitBranch=$(GITREF)"
 all: build
 
 build:
-	$(GOBUILD) -ldflags '$(LDFLAGS)'  -o ./bin/dbcompare main.go
-
-linux:
-	GOOS=linux GOARCH=amd64 $(GOBUILD) -ldflags '$(LDFLAGS)'  -o ./bin/dbcompare main.go
+	$(GOBUILD) -ldflags '$(LDFLAGS)'  -o ./bin/dbcompare_${GOARCH} main.go
 	
 tool:
 	go tool vet . |& grep -v vendor; true
