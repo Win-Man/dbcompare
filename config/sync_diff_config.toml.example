@@ -36,6 +36,7 @@ concurrency = 5
 dump-extra-args = "--no-schemas --no-header"
 oracle-ctl-file-dir = "./work/ctl"
 ctl-template = "./config/ctl.tmpl"
+truncate-before-load = false
 
 
 

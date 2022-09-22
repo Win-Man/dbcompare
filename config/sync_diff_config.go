@@ -29,13 +29,14 @@ type SyncControlConfig struct {
 }
 
 type SyncFix struct {
-	DumplingBinPath  string `toml:"dumpling-bin-path" json:"dumpling-bin-path"`
-	DumpDataDir      string `toml:"dump-data-dir" json:"dump-data=dir"`
-	Concurrency      int    `toml:"concurrency" json:"concurrency"`
-	DumpExtraArgs    string `toml:"dump-extra-args" json:"dump-extra-args"`
-	OracleCtlFileDir string `toml:"oracle-ctl-file-dir" json:"oracle-ctl-file-dir"`
-	CtlTemplate      string `toml:"ctl-template" json:"ctl-template"`
-	SqlldrBinPath    string `toml:"sqlldr-bin-path" json:"sqlldr-bin-path"`
+	DumplingBinPath    string `toml:"dumpling-bin-path" json:"dumpling-bin-path"`
+	DumpDataDir        string `toml:"dump-data-dir" json:"dump-data=dir"`
+	Concurrency        int    `toml:"concurrency" json:"concurrency"`
+	DumpExtraArgs      string `toml:"dump-extra-args" json:"dump-extra-args"`
+	OracleCtlFileDir   string `toml:"oracle-ctl-file-dir" json:"oracle-ctl-file-dir"`
+	CtlTemplate        string `toml:"ctl-template" json:"ctl-template"`
+	SqlldrBinPath      string `toml:"sqlldr-bin-path" json:"sqlldr-bin-path"`
+	TruncateBeforeLoad bool   `toml:"truncate-before-load" json:"truncate-before-load"`
 }
 
 // InitConfig Func

@@ -329,9 +329,28 @@ func runLoadControl(cfg config.SyncDiffConfig) error {
 	return nil
 }
 
-// TODO检查是否为空表
 func runLoad(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTableInfo) error {
 	for task := range tasks {
+		if cfg.SyncFixConfig.TruncateBeforeLoad == true {
+			var db *sql.DB
+			var err error
+			db, err = database.OpenOracleDB(&cfg.OracleConfig)
+			defer db.Close()
+			if err != nil {
+				log.Error(fmt.Sprintf("Connect source database error:%v", err))
+				continue
+			}
+			truncateSql := fmt.Sprintf("truncate table  %s.%s ",
+				strings.ToUpper(task.TableSchemaOrale), strings.ToUpper(task.TableName))
+			log.Debug(truncateSql)
+			_, err = db.Exec(truncateSql)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			log.Info(fmt.Sprintf("[Thread-%d]Finished truncate table %s.%s", threadID, task.TableSchemaOrale, task.TableName))
+		}
+
 		log.Info(fmt.Sprintf("[Thread-%d]Start to sqlldr load data %s.%s", threadID, task.TableSchemaOrale, task.TableName))
 		ctlFilePath := filepath.Join(cfg.SyncFixConfig.OracleCtlFileDir, fmt.Sprintf("%s.%s.ctl", task.TableSchemaOrale, task.TableName))
 		logPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sqlldr_load_%s.%s.log", task.TableSchemaOrale, task.TableName))
