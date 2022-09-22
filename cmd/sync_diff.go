@@ -201,7 +201,7 @@ func createConfigTables(cfg config.SyncDiffConfig) error {
 
 func runSyncDiffControl(cfg config.SyncDiffConfig) error {
 	//generateSyncDiffConfig("dbdb", "tabletable")
-	batchid = time.Now().Format("20060102112233")
+	batchid = time.Now().Format("20060102150405")
 	var err error
 	err = os.MkdirAll(cfg.SyncCtlConfig.ConfDir, 0755)
 	if err != nil {
