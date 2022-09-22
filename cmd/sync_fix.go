@@ -117,6 +117,7 @@ func runDumpDataControl(cfg config.SyncDiffConfig) error {
 	threadCount := cfg.SyncFixConfig.Concurrency
 	tasks := make(chan DumpTableInfo, threadCount)
 	var wg sync.WaitGroup
+	handleCount = 0
 	for i := 1; i <= threadCount; i++ {
 		wg.Add(1)
 		tmpi := i
@@ -134,9 +135,19 @@ func runDumpDataControl(cfg config.SyncDiffConfig) error {
 		log.Error(fmt.Sprintf("Connect source database error:%v", err))
 		return err
 	}
+	countQuerySql := fmt.Sprintf(`SELECT count(*) FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, CompareFailed)
+	rows, err := db.Query(countQuerySql)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	for rows.Next() {
+		rows.Scan(&tableCount)
+	}
+
 	querysql := fmt.Sprintf(`SELECT id,table_schema,table_name,ifnull(table_schema_oracle,table_schema) FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, CompareFailed)
 	var dumpRow DumpTableInfo
-	rows, err := db.Query(querysql)
+	rows, err = db.Query(querysql)
 	if err != nil {
 		return err
 	}
@@ -157,7 +168,9 @@ func runDumpDataControl(cfg config.SyncDiffConfig) error {
 
 func runDumpData(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTableInfo) {
 	for task := range tasks {
+		handleCount = handleCount + 1
 		log.Info(fmt.Sprintf("[Thread-%d]Start to dump %s.%s data", threadID, task.TableSchema, task.TableName))
+		log.Info(fmt.Sprintf("Process dump-data %d/%d", handleCount, tableCount))
 		logPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("dumpling_%s.%s.log", task.TableSchema, task.TableName))
 		cmd := fmt.Sprintf("%s -u %s -P %d -h %s -p \"%s\" --filter \"%s.%s\" -o %s %s> %s", cfg.SyncFixConfig.DumplingBinPath, cfg.TiDBConfig.User,
 			cfg.TiDBConfig.Port, cfg.TiDBConfig.Host, cfg.TiDBConfig.Password,
@@ -188,6 +201,7 @@ func runGeneratorControl(cfg config.SyncDiffConfig) error {
 	threadCount := cfg.SyncFixConfig.Concurrency
 	tasks := make(chan DumpTableInfo, threadCount)
 	var wg sync.WaitGroup
+	handleCount = 0
 	for i := 1; i <= threadCount; i++ {
 		wg.Add(1)
 		tmpi := i
@@ -205,9 +219,19 @@ func runGeneratorControl(cfg config.SyncDiffConfig) error {
 		log.Error(fmt.Sprintf("Connect source database error:%v", err))
 		return err
 	}
+	countQuerySql := fmt.Sprintf(`SELECT count(*) FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, CompareFailed)
+	rows, err := db.Query(countQuerySql)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	for rows.Next() {
+		rows.Scan(&tableCount)
+	}
+
 	querysql := fmt.Sprintf(`SELECT id,table_schema,table_name,ifnull(table_schema_oracle,table_schema) FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, CompareFailed)
 	var dumpRow DumpTableInfo
-	rows, err := db.Query(querysql)
+	rows, err = db.Query(querysql)
 	if err != nil {
 		return err
 	}
@@ -228,7 +252,9 @@ func runGeneratorControl(cfg config.SyncDiffConfig) error {
 
 func runGenerator(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTableInfo) {
 	for task := range tasks {
+		handleCount = handleCount + 1
 		log.Info(fmt.Sprintf("Start to generate oracle sqlldr ctl file for %s.%s", task.TableSchema, task.TableName))
+		log.Info(fmt.Sprintf("Process generate-ctl %d/%d", handleCount, tableCount))
 		var db *sql.DB
 		var err error
 		db, err = database.OpenOracleDB(&cfg.OracleConfig)
@@ -294,6 +320,7 @@ func runLoadControl(cfg config.SyncDiffConfig) error {
 	threadCount := cfg.SyncFixConfig.Concurrency
 	tasks := make(chan DumpTableInfo, threadCount)
 	var wg sync.WaitGroup
+	handleCount = 0
 	for i := 1; i <= threadCount; i++ {
 		wg.Add(1)
 		tmpi := i
@@ -310,9 +337,18 @@ func runLoadControl(cfg config.SyncDiffConfig) error {
 		log.Error(fmt.Sprintf("Connect source database error:%v", err))
 		return err
 	}
+	countQuerySql := fmt.Sprintf(`SELECT count(*) FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, CompareFailed)
+	rows, err := db.Query(countQuerySql)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	for rows.Next() {
+		rows.Scan(&tableCount)
+	}
 	querysql := fmt.Sprintf(`SELECT id,table_schema,table_name,ifnull(table_schema_oracle,table_schema) FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, CompareFailed)
 	var dumpRow DumpTableInfo
-	rows, err := db.Query(querysql)
+	rows, err = db.Query(querysql)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -331,6 +367,7 @@ func runLoadControl(cfg config.SyncDiffConfig) error {
 
 func runLoad(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTableInfo) error {
 	for task := range tasks {
+		handleCount = handleCount + 1
 		if cfg.SyncFixConfig.TruncateBeforeLoad == true {
 			var db *sql.DB
 			var err error
@@ -352,6 +389,7 @@ func runLoad(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTableInfo
 		}
 
 		log.Info(fmt.Sprintf("[Thread-%d]Start to sqlldr load data %s.%s", threadID, task.TableSchemaOrale, task.TableName))
+		log.Info(fmt.Sprintf("Process load-data %d/%d", handleCount, tableCount))
 		ctlFilePath := filepath.Join(cfg.SyncFixConfig.OracleCtlFileDir, fmt.Sprintf("%s.%s.ctl", task.TableSchemaOrale, task.TableName))
 		logPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sqlldr_load_%s.%s.log", task.TableSchemaOrale, task.TableName))
 		cmd := fmt.Sprintf("%s %s/%s control=%s > %s", cfg.SyncFixConfig.SqlldrBinPath, cfg.OracleConfig.User, cfg.OracleConfig.Password, ctlFilePath, logPath)

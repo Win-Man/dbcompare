@@ -48,6 +48,8 @@ type SyncDiffTemplate struct {
 }
 
 var batchid string
+var tableCount int
+var handleCount int
 
 func newSyncDiffCmd() *cobra.Command {
 
@@ -216,6 +218,7 @@ func runSyncDiffControl(cfg config.SyncDiffConfig) error {
 	threadCount := cfg.SyncCtlConfig.Concurrency
 	tasks := make(chan int, threadCount)
 	var wg sync.WaitGroup
+	handleCount = 0
 	for i := 1; i <= threadCount; i++ {
 		wg.Add(1)
 		tmpi := i
@@ -233,9 +236,18 @@ func runSyncDiffControl(cfg config.SyncDiffConfig) error {
 		log.Error(fmt.Sprintf("Connect source database error:%v", err))
 		return err
 	}
+	countQuerySql := fmt.Sprintf(`SELECT count(*) FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, SyncWaiting)
+	rows, err := db.Query(countQuerySql)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	for rows.Next() {
+		rows.Scan(&tableCount)
+	}
 	querysql := fmt.Sprintf(`SELECT id FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, SyncWaiting)
 	var rowid int
-	rows, err := db.Query(querysql)
+	rows, err = db.Query(querysql)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -267,7 +279,9 @@ func testFunc(threadID int, tasks <-chan int) {
 func runSyncDiff(cfg config.SyncDiffConfig, threadID int, tasks <-chan int) {
 
 	for taskid := range tasks {
+		handleCount = handleCount + 1
 		log.Info(fmt.Sprintf("[Thread-%d]Start to run sync diff for id:%d", threadID, taskid))
+		log.Info(fmt.Sprintf("Process sync-diff %d/%d", handleCount, tableCount))
 		var db *sql.DB
 		var err error
 		db, err = database.OpenMySQLDB(&cfg.TiDBConfig)
