@@ -39,18 +39,18 @@ type CtlTemplate struct {
 	Columns           string
 }
 
-func newSyncFixCmd() *cobra.Command {
+func newT2OInitCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
-		Use:   "sync-fix <dump-data|generate-ctl|load-data|all>",
-		Short: "sync-fix",
+		Use:   "t2o-init <dump-data|generate-ctl|load-data|all>",
+		Short: "t2o-init",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return cmd.Help()
 			}
 			cfg := config.InitOTOConfig(configPath)
 			logger.InitLogger(logLevel, logPath, cfg.Log)
-			log.Info("Welcome to sync-fix")
+			log.Info("Welcome to t2o-init")
 			log.Debug(fmt.Sprintf("Flags:%+v", cmd.Flags()))
 			log.Debug(fmt.Sprintf("arguments:%s", strings.Join(args, ",")))
 			switch args[0] {
