@@ -13,22 +13,27 @@ package config
 
 import "github.com/BurntSushi/toml"
 
-type SyncDiffConfig struct {
-	Log           Log               `toml:"log" json:"log"`
-	TiDBConfig    DBConfig          `toml:"tidb-config" json:"tidb-config"`
-	OracleConfig  OracleDBConfig    `toml:"oracle-config" json:"oracle-config"`
-	SyncCtlConfig SyncControlConfig `toml:"sync-ctl-config" json:"sync-ctl-config"`
-	SyncFixConfig SyncFix           `toml:"sync-fix-config" json:"sync-fix-config"`
+type OTOConfig struct {
+	Log             Log                   `toml:"log" json:"log"`
+	Performance     PerformanceConfig     `toml:"performance" json:"performance"`
+	TiDBConfig      DBConfig              `toml:"tidb-config" json:"tidb-config"`
+	OracleConfig    OracleDBConfig        `toml:"oracle-config" json:"oracle-config"`
+	SyncDiffControl SyncDiffControlConfig `toml:"sync-diff-control-config" json:"sync-diff-control-config"`
+	T2OInit         T2OInitConfig         `toml:"t2o-init-config" json:"t2o-init-config"`
 }
 
-type SyncControlConfig struct {
+type PerformanceConfig struct {
+	Concurrency int `toml:"concurrency" json:"concurrency"`
+}
+
+type SyncDiffControlConfig struct {
 	ConfDir      string `toml:"conf-dir" json:"conf-dir"`
 	Concurrency  int    `toml:"concurrency" json:"concurrency"`
 	BinPath      string `toml:"bin-path" json:"bin-path"`
 	SyncTemplate string `toml:"sync-template" json:"sync-template"`
 }
 
-type SyncFix struct {
+type T2OInitConfig struct {
 	DumplingBinPath    string `toml:"dumpling-bin-path" json:"dumpling-bin-path"`
 	DumpDataDir        string `toml:"dump-data-dir" json:"dump-data=dir"`
 	Concurrency        int    `toml:"concurrency" json:"concurrency"`
@@ -40,7 +45,7 @@ type SyncFix struct {
 }
 
 // InitConfig Func
-func InitSyncDiffConfig(configPath string) (cfg SyncDiffConfig) {
+func InitOTOConfig(configPath string) (cfg OTOConfig) {
 
 	if _, err := toml.DecodeFile(configPath, &cfg); err != nil {
 		panic(err)

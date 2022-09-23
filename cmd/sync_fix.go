@@ -48,7 +48,7 @@ func newSyncFixCmd() *cobra.Command {
 			if len(args) < 1 {
 				return cmd.Help()
 			}
-			cfg := config.InitSyncDiffConfig(configPath)
+			cfg := config.InitOTOConfig(configPath)
 			logger.InitLogger(logLevel, logPath, cfg.Log)
 			log.Info("Welcome to sync-fix")
 			log.Debug(fmt.Sprintf("Flags:%+v", cmd.Flags()))
@@ -107,14 +107,14 @@ type DumpTableInfo struct {
 	TableSchemaOrale string
 }
 
-func runDumpDataControl(cfg config.SyncDiffConfig) error {
+func runDumpDataControl(cfg config.OTOConfig) error {
 	var err error
-	err = os.MkdirAll(cfg.SyncFixConfig.DumpDataDir, 0755)
+	err = os.MkdirAll(cfg.T2OInit.DumpDataDir, 0755)
 	if err != nil {
 		return err
 	}
 
-	threadCount := cfg.SyncFixConfig.Concurrency
+	threadCount := cfg.Performance.Concurrency
 	tasks := make(chan DumpTableInfo, threadCount)
 	var wg sync.WaitGroup
 	handleCount = 0
@@ -166,16 +166,16 @@ func runDumpDataControl(cfg config.SyncDiffConfig) error {
 	return nil
 }
 
-func runDumpData(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTableInfo) {
+func runDumpData(cfg config.OTOConfig, threadID int, tasks <-chan DumpTableInfo) {
 	for task := range tasks {
 		handleCount = handleCount + 1
 		log.Info(fmt.Sprintf("[Thread-%d]Start to dump %s.%s data", threadID, task.TableSchema, task.TableName))
 		log.Info(fmt.Sprintf("Process dump-data %d/%d", handleCount, tableCount))
 		logPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("dumpling_%s.%s.log", task.TableSchema, task.TableName))
-		cmd := fmt.Sprintf("%s -u %s -P %d -h %s -p \"%s\" --filter \"%s.%s\" -o %s %s> %s", cfg.SyncFixConfig.DumplingBinPath, cfg.TiDBConfig.User,
+		cmd := fmt.Sprintf("%s -u %s -P %d -h %s -p \"%s\" --filter \"%s.%s\" -o %s %s> %s", cfg.T2OInit.DumplingBinPath, cfg.TiDBConfig.User,
 			cfg.TiDBConfig.Port, cfg.TiDBConfig.Host, cfg.TiDBConfig.Password,
-			task.TableSchema, task.TableName, cfg.SyncFixConfig.DumpDataDir,
-			cfg.SyncFixConfig.DumpExtraArgs, logPath)
+			task.TableSchema, task.TableName, cfg.T2OInit.DumpDataDir,
+			cfg.T2OInit.DumpExtraArgs, logPath)
 		c := exec.Command("bash", "-c", cmd)
 		output, err := c.CombinedOutput()
 		if err != nil {
@@ -190,15 +190,15 @@ func runDumpData(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTable
 
 }
 
-func runGeneratorControl(cfg config.SyncDiffConfig) error {
+func runGeneratorControl(cfg config.OTOConfig) error {
 	var err error
-	err = os.MkdirAll(cfg.SyncFixConfig.OracleCtlFileDir, 0755)
+	err = os.MkdirAll(cfg.T2OInit.OracleCtlFileDir, 0755)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	threadCount := cfg.SyncFixConfig.Concurrency
+	threadCount := cfg.Performance.Concurrency
 	tasks := make(chan DumpTableInfo, threadCount)
 	var wg sync.WaitGroup
 	handleCount = 0
@@ -250,7 +250,7 @@ func runGeneratorControl(cfg config.SyncDiffConfig) error {
 	return nil
 }
 
-func runGenerator(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTableInfo) {
+func runGenerator(cfg config.OTOConfig, threadID int, tasks <-chan DumpTableInfo) {
 	for task := range tasks {
 		handleCount = handleCount + 1
 		log.Info(fmt.Sprintf("Start to generate oracle sqlldr ctl file for %s.%s", task.TableSchema, task.TableName))
@@ -277,7 +277,7 @@ func runGenerator(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTabl
 			rows.Scan(&tmp)
 			colNames = append(colNames, tmp)
 		}
-		tpl, err := template.ParseFiles(cfg.SyncFixConfig.CtlTemplate)
+		tpl, err := template.ParseFiles(cfg.T2OInit.CtlTemplate)
 		if err != nil {
 			log.Error(fmt.Sprintf("template parsefiles failed,err:%v", err))
 			continue
@@ -285,14 +285,14 @@ func runGenerator(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTabl
 
 		ctltmpl := CtlTemplate{
 			Character:         "UTF8",
-			FilePath:          filepath.Join(cfg.SyncFixConfig.DumpDataDir, fmt.Sprintf("%s.%s.000000000.csv", task.TableSchema, task.TableName)),
-			BadFilePath:       filepath.Join(cfg.SyncFixConfig.OracleCtlFileDir, fmt.Sprintf("%s.%s.bad", task.TableSchemaOrale, task.TableName)),
-			DiscardFilePath:   filepath.Join(cfg.SyncFixConfig.OracleCtlFileDir, fmt.Sprintf("%s.%s.disc", task.TableSchemaOrale, task.TableName)),
+			FilePath:          filepath.Join(cfg.T2OInit.DumpDataDir, fmt.Sprintf("%s.%s.000000000.csv", task.TableSchema, task.TableName)),
+			BadFilePath:       filepath.Join(cfg.T2OInit.OracleCtlFileDir, fmt.Sprintf("%s.%s.bad", task.TableSchemaOrale, task.TableName)),
+			DiscardFilePath:   filepath.Join(cfg.T2OInit.OracleCtlFileDir, fmt.Sprintf("%s.%s.disc", task.TableSchemaOrale, task.TableName)),
 			TableOracleSchema: task.TableSchemaOrale,
 			TableName:         task.TableName,
 			Columns:           strings.Join(colNames, ","),
 		}
-		ctlFilePath := filepath.Join(cfg.SyncFixConfig.OracleCtlFileDir, fmt.Sprintf("%s.%s.ctl", task.TableSchemaOrale, task.TableName))
+		ctlFilePath := filepath.Join(cfg.T2OInit.OracleCtlFileDir, fmt.Sprintf("%s.%s.ctl", task.TableSchemaOrale, task.TableName))
 		f, err := os.Create(ctlFilePath)
 		defer f.Close()
 		if err != nil {
@@ -309,15 +309,15 @@ func runGenerator(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTabl
 
 }
 
-func runLoadControl(cfg config.SyncDiffConfig) error {
+func runLoadControl(cfg config.OTOConfig) error {
 	var err error
-	err = os.MkdirAll(cfg.SyncFixConfig.DumpDataDir, 0755)
+	err = os.MkdirAll(cfg.T2OInit.DumpDataDir, 0755)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	threadCount := cfg.SyncFixConfig.Concurrency
+	threadCount := cfg.T2OInit.Concurrency
 	tasks := make(chan DumpTableInfo, threadCount)
 	var wg sync.WaitGroup
 	handleCount = 0
@@ -365,10 +365,10 @@ func runLoadControl(cfg config.SyncDiffConfig) error {
 	return nil
 }
 
-func runLoad(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTableInfo) error {
+func runLoad(cfg config.OTOConfig, threadID int, tasks <-chan DumpTableInfo) error {
 	for task := range tasks {
 		handleCount = handleCount + 1
-		if cfg.SyncFixConfig.TruncateBeforeLoad == true {
+		if cfg.T2OInit.TruncateBeforeLoad == true {
 			var db *sql.DB
 			var err error
 			db, err = database.OpenOracleDB(&cfg.OracleConfig)
@@ -390,9 +390,9 @@ func runLoad(cfg config.SyncDiffConfig, threadID int, tasks <-chan DumpTableInfo
 
 		log.Info(fmt.Sprintf("[Thread-%d]Start to sqlldr load data %s.%s", threadID, task.TableSchemaOrale, task.TableName))
 		log.Info(fmt.Sprintf("Process load-data %d/%d", handleCount, tableCount))
-		ctlFilePath := filepath.Join(cfg.SyncFixConfig.OracleCtlFileDir, fmt.Sprintf("%s.%s.ctl", task.TableSchemaOrale, task.TableName))
+		ctlFilePath := filepath.Join(cfg.T2OInit.OracleCtlFileDir, fmt.Sprintf("%s.%s.ctl", task.TableSchemaOrale, task.TableName))
 		logPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sqlldr_load_%s.%s.log", task.TableSchemaOrale, task.TableName))
-		cmd := fmt.Sprintf("%s %s/%s control=%s > %s", cfg.SyncFixConfig.SqlldrBinPath, cfg.OracleConfig.User, cfg.OracleConfig.Password, ctlFilePath, logPath)
+		cmd := fmt.Sprintf("%s %s/%s control=%s > %s", cfg.T2OInit.SqlldrBinPath, cfg.OracleConfig.User, cfg.OracleConfig.Password, ctlFilePath, logPath)
 		c := exec.Command("bash", "-c", cmd)
 		// cmdTest := fmt.Sprintf("%s %s", binPath, confPath)
 		// c := exec.Command("bash", "-c", cmdTest)

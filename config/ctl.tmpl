@@ -1,6 +1,6 @@
 load data 
 CHARACTERSET {{ .Character }}
-infile "{{ .FilePath }}"
+infile "{{ .FilePath }}" "str X'0D0A'"
 badfile "{{ .BadFilePath }}"
 discardfile "{{ .DiscardFilePath }}"
 APPEND INTO TABLE {{ .TableOracleSchema }}.{{ .TableName }}

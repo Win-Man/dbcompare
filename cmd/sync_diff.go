@@ -60,9 +60,9 @@ func newSyncDiffCmd() *cobra.Command {
 			if len(args) < 1 {
 				return cmd.Help()
 			}
-			cfg := config.InitSyncDiffConfig(configPath)
+			cfg := config.InitOTOConfig(configPath)
 			logger.InitLogger(logLevel, logPath, cfg.Log)
-			log.Info("Welcome to sync-diff")
+			log.Info("Welcome to sync-diff-control")
 			log.Debug(fmt.Sprintf("Flags:%+v", cmd.Flags()))
 			log.Debug(fmt.Sprintf("arguments:%s", strings.Join(args, ",")))
 			switch args[0] {
@@ -93,7 +93,7 @@ func newSyncDiffCmd() *cobra.Command {
 	return cmd
 }
 
-func createConfigTables(cfg config.SyncDiffConfig) error {
+func createConfigTables(cfg config.OTOConfig) error {
 	log.Info("Start to create syncdiff_config_result and syncdiff_config_result_his table")
 	table_sql := `
 	CREATE TABLE IF NOT EXISTS syncdiff_config_result (
@@ -201,11 +201,11 @@ func createConfigTables(cfg config.SyncDiffConfig) error {
 	return nil
 }
 
-func runSyncDiffControl(cfg config.SyncDiffConfig) error {
+func runSyncDiffControl(cfg config.OTOConfig) error {
 	//generateSyncDiffConfig("dbdb", "tabletable")
 	batchid = time.Now().Format("20060102150405")
 	var err error
-	err = os.MkdirAll(cfg.SyncCtlConfig.ConfDir, 0755)
+	err = os.MkdirAll(cfg.SyncDiffControl.ConfDir, 0755)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -215,7 +215,7 @@ func runSyncDiffControl(cfg config.SyncDiffConfig) error {
 		log.Error(err)
 		return err
 	}
-	threadCount := cfg.SyncCtlConfig.Concurrency
+	threadCount := cfg.Performance.Concurrency
 	tasks := make(chan int, threadCount)
 	var wg sync.WaitGroup
 	handleCount = 0
@@ -268,15 +268,7 @@ func runSyncDiffControl(cfg config.SyncDiffConfig) error {
 	return nil
 }
 
-func testFunc(threadID int, tasks <-chan int) {
-
-	for jobid := range tasks {
-		log.Info(fmt.Sprintf("[Thread-%d]Start to run sync diff taskid:%d", threadID, jobid))
-		time.Sleep(1 * time.Second)
-	}
-}
-
-func runSyncDiff(cfg config.SyncDiffConfig, threadID int, tasks <-chan int) {
+func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan int) {
 
 	for taskid := range tasks {
 		handleCount = handleCount + 1
@@ -363,15 +355,15 @@ func runSyncDiff(cfg config.SyncDiffConfig, threadID int, tasks <-chan int) {
 		syncStartTime := time.Now()
 		//Generate sync condig
 		err = generateSyncDiffConfig(tableSchema, tableName, tableSchemaTarget, ignoreColumns,
-			cfg.SyncCtlConfig.ConfDir, chunk_size, check_thread_count, snapshot_source, snapshot_target, cfg)
+			cfg.SyncDiffControl.ConfDir, chunk_size, check_thread_count, snapshot_source, snapshot_target, cfg)
 		if err != nil {
 			log.Error(fmt.Sprintf("[Thread-%d]GenerateSyncDiffConfig error:%v", threadID, err))
 			continue
 		}
 		//Do sync-diff
-		confPath := filepath.Join(cfg.SyncCtlConfig.ConfDir, fmt.Sprintf("sync_diff_%s.%s.toml", tableSchema, tableName))
+		confPath := filepath.Join(cfg.SyncDiffControl.ConfDir, fmt.Sprintf("sync_diff_%s.%s.toml", tableSchema, tableName))
 		logPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sync_diff_%s.%s.log", tableSchema, tableName))
-		rtCode := runSyncDiffTask(cfg.SyncCtlConfig.BinPath, confPath, logPath)
+		rtCode := runSyncDiffTask(cfg.SyncDiffControl.BinPath, confPath, logPath)
 
 		syncEndTime := time.Now()
 		durationTime := int(syncEndTime.Sub(syncStartTime).Seconds())
@@ -416,9 +408,9 @@ func runSyncDiff(cfg config.SyncDiffConfig, threadID int, tasks <-chan int) {
 
 func generateSyncDiffConfig(tableSchema string, tableName string, tableSchemaTarget string, ignoreCols string,
 	confDir string, chunkSize int, checkThreadCount int, snapSource string, snapTarget string,
-	cfg config.SyncDiffConfig) error {
+	cfg config.OTOConfig) error {
 	log.Info(fmt.Sprintf("Start to generate o2t-sync-diff config for %s.%s", tableSchema, tableName))
-	tpl, err := template.ParseFiles(cfg.SyncCtlConfig.SyncTemplate)
+	tpl, err := template.ParseFiles(cfg.SyncDiffControl.SyncTemplate)
 	if err != nil {
 		log.Error(fmt.Sprintf("template parsefiles failed,err:%v", err))
 		return err
@@ -439,7 +431,7 @@ func generateSyncDiffConfig(tableSchema string, tableName string, tableSchemaTar
 	if ignoreCols != "" {
 		syncdifftmp.IgnoreCols = strings.Replace(ignoreCols, ",", "\",\"", -1)
 	}
-	f, err := os.Create(filepath.Join(cfg.SyncCtlConfig.ConfDir, fmt.Sprintf("sync_diff_%s.%s.toml", tableSchema, tableName)))
+	f, err := os.Create(filepath.Join(cfg.SyncDiffControl.ConfDir, fmt.Sprintf("sync_diff_%s.%s.toml", tableSchema, tableName)))
 	defer f.Close()
 	if err != nil {
 		log.Error(err)

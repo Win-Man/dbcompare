@@ -4,6 +4,10 @@ log-path = "dbcompare.log"
 log-dir = "./work/log"
 
 
+[operator]
+concurrency = 5
+
+
 [tidb-config]
 host = '127.0.0.1'
 port = 4000
@@ -20,23 +24,26 @@ service-name = "orcl"
 schema-name = ""
 
 
-[sync-ctl-config]
+[sync-diff-control]
 sync-template = "./config/sync-diff-config.tmpl"
 conf-dir = "./work/conf"
-concurrency = 3
 bin-path = "./work/bin/o2t-sync-diff"
 
 
 
-[sync-fix-config]
+[t2o-init]
 dumpling-bin-path = "./dumpling"
 sqlldr-bin-path = "./sqlldr"
 dump-data-dir = "./work/dump"
-concurrency = 5
 dump-extra-args = "--no-schemas --no-header"
 oracle-ctl-file-dir = "./work/ctl"
 ctl-template = "./config/ctl.tmpl"
 truncate-before-load = false
+
+[o2t-init]
+sqlldr2-bin-path = "./sqlldr2"
+lightning-bin-path = "./tidb-lightning"
+
 
 
 
