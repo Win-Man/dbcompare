@@ -171,11 +171,11 @@ func runDumpData(cfg config.OTOConfig, threadID int, tasks <-chan DumpTableInfo)
 		handleCount = handleCount + 1
 		log.Info(fmt.Sprintf("[Thread-%d]Start to dump %s.%s data", threadID, task.TableSchema, task.TableName))
 		log.Info(fmt.Sprintf("Process dump-data %d/%d", handleCount, tableCount))
-		logPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("dumpling_%s.%s.log", task.TableSchema, task.TableName))
-		cmd := fmt.Sprintf("%s -u %s -P %d -h %s -p \"%s\" --filter \"%s.%s\" -o %s %s> %s", cfg.T2OInit.DumplingBinPath, cfg.TiDBConfig.User,
+		stdLogPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("dumpling_%s.%s.log", task.TableSchema, task.TableName))
+		cmd := fmt.Sprintf("%s -u %s -P %d -h %s -p \"%s\" --filter \"%s.%s\" -o %s %s> %s 2>&1", cfg.T2OInit.DumplingBinPath, cfg.TiDBConfig.User,
 			cfg.TiDBConfig.Port, cfg.TiDBConfig.Host, cfg.TiDBConfig.Password,
 			task.TableSchema, task.TableName, cfg.T2OInit.DumpDataDir,
-			cfg.T2OInit.DumpExtraArgs, logPath)
+			cfg.T2OInit.DumpExtraArgs, stdLogPath)
 		c := exec.Command("bash", "-c", cmd)
 		output, err := c.CombinedOutput()
 		if err != nil {
@@ -317,7 +317,7 @@ func runLoadControl(cfg config.OTOConfig) error {
 		return err
 	}
 
-	threadCount := cfg.T2OInit.Concurrency
+	threadCount := cfg.Performance.Concurrency
 	tasks := make(chan DumpTableInfo, threadCount)
 	var wg sync.WaitGroup
 	handleCount = 0
@@ -391,8 +391,9 @@ func runLoad(cfg config.OTOConfig, threadID int, tasks <-chan DumpTableInfo) err
 		log.Info(fmt.Sprintf("[Thread-%d]Start to sqlldr load data %s.%s", threadID, task.TableSchemaOrale, task.TableName))
 		log.Info(fmt.Sprintf("Process load-data %d/%d", handleCount, tableCount))
 		ctlFilePath := filepath.Join(cfg.T2OInit.OracleCtlFileDir, fmt.Sprintf("%s.%s.ctl", task.TableSchemaOrale, task.TableName))
-		logPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sqlldr_load_%s.%s.log", task.TableSchemaOrale, task.TableName))
-		cmd := fmt.Sprintf("%s %s/%s control=%s > %s", cfg.T2OInit.SqlldrBinPath, cfg.OracleConfig.User, cfg.OracleConfig.Password, ctlFilePath, logPath)
+		sqlldrLogPath := filepath.Join(cfg.T2OInit.OracleCtlFileDir, fmt.Sprintf("%s.%s.log", task.TableSchemaOrale, task.TableName))
+		stdLogPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sqlldr_load_%s.%s.log", task.TableSchemaOrale, task.TableName))
+		cmd := fmt.Sprintf("%s %s/%s control=%s log=%s %s> %s 2>&1", cfg.T2OInit.SqlldrBinPath, cfg.OracleConfig.User, cfg.OracleConfig.Password, ctlFilePath, sqlldrLogPath, cfg.T2OInit.SqlldrExtraArgs, stdLogPath)
 		c := exec.Command("bash", "-c", cmd)
 		// cmdTest := fmt.Sprintf("%s %s", binPath, confPath)
 		// c := exec.Command("bash", "-c", cmdTest)

@@ -28,7 +28,6 @@ type PerformanceConfig struct {
 
 type SyncDiffControlConfig struct {
 	ConfDir      string `toml:"conf-dir" json:"conf-dir"`
-	Concurrency  int    `toml:"concurrency" json:"concurrency"`
 	BinPath      string `toml:"bin-path" json:"bin-path"`
 	SyncTemplate string `toml:"sync-template" json:"sync-template"`
 }
@@ -36,11 +35,11 @@ type SyncDiffControlConfig struct {
 type T2OInitConfig struct {
 	DumplingBinPath    string `toml:"dumpling-bin-path" json:"dumpling-bin-path"`
 	DumpDataDir        string `toml:"dump-data-dir" json:"dump-data=dir"`
-	Concurrency        int    `toml:"concurrency" json:"concurrency"`
 	DumpExtraArgs      string `toml:"dump-extra-args" json:"dump-extra-args"`
 	OracleCtlFileDir   string `toml:"oracle-ctl-file-dir" json:"oracle-ctl-file-dir"`
 	CtlTemplate        string `toml:"ctl-template" json:"ctl-template"`
 	SqlldrBinPath      string `toml:"sqlldr-bin-path" json:"sqlldr-bin-path"`
+	SqlldrExtraArgs    string `toml:"sqlldr-extra-args" json:"sqlldr-extra-args"`
 	TruncateBeforeLoad bool   `toml:"truncate-before-load" json:"truncate-before-load"`
 }
 

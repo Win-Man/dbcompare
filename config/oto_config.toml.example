@@ -34,6 +34,7 @@ bin-path = "./work/bin/o2t-sync-diff"
 [t2o-init]
 dumpling-bin-path = "./dumpling"
 sqlldr-bin-path = "./sqlldr"
+sqlldr-extra-args = ""
 dump-data-dir = "./work/dump"
 dump-extra-args = "--no-schemas --no-header"
 oracle-ctl-file-dir = "./work/ctl"
