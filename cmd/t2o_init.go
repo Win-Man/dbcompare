@@ -20,6 +20,7 @@ import (
 	"strings"
 	"sync"
 	"text/template"
+	"time"
 
 	"github.com/Win-Man/dbcompare/config"
 	"github.com/Win-Man/dbcompare/database"
@@ -42,7 +43,7 @@ type CtlTemplate struct {
 func newT2OInitCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
-		Use:   "t2o-init <dump-data|generate-ctl|load-data|all>",
+		Use:   "t2o-init <prepare|dump-data|generate-conf|load-data|all>",
 		Short: "t2o-init",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
@@ -54,36 +55,49 @@ func newT2OInitCmd() *cobra.Command {
 			log.Debug(fmt.Sprintf("Flags:%+v", cmd.Flags()))
 			log.Debug(fmt.Sprintf("arguments:%s", strings.Join(args, ",")))
 			switch args[0] {
-			case "dump-data":
-				err := runDumpDataControl(cfg)
+			case "prepare":
+				err := createT2OInitMeta(cfg)
 				if err != nil {
 					log.Error(err)
 					os.Exit(1)
 				}
-			case "generate-ctl":
-				err := runGeneratorControl(cfg)
+				log.Info("Finished prepare without errors.")
+				fmt.Printf("Create table success.\nPls init table data,refer sql:\n")
+				fmt.Printf(`INSERT INTO %s.t2o_config(
+					table_schema_tidb,table_name_tidb,table_schema_oracle,
+					dump_status,generate_ctl_status,load_status) 
+					VALUES ('mydb','mytab','ordb','%s','%s','%s')`,
+					cfg.TiDBConfig.Database, StatusWaiting, StatusWaiting, StatusWaiting)
+			case "dump-data":
+				err := runT2ODumpDataControl(cfg)
+				if err != nil {
+					log.Error(err)
+					os.Exit(1)
+				}
+			case "generate-conf":
+				err := runT2OGeneratorControl(cfg)
 				if err != nil {
 					log.Error(err)
 					os.Exit(1)
 				}
 			case "load-data":
-				err := runLoadControl(cfg)
+				err := runT2OLoadControl(cfg)
 				if err != nil {
 					log.Error(err)
 					os.Exit(1)
 				}
 			case "all":
-				err := runDumpDataControl(cfg)
+				err := runT2ODumpDataControl(cfg)
 				if err != nil {
 					log.Error(err)
 					os.Exit(1)
 				}
-				err = runGeneratorControl(cfg)
+				err = runT2OGeneratorControl(cfg)
 				if err != nil {
 					log.Error(err)
 					os.Exit(1)
 				}
-				err = runLoadControl(cfg)
+				err = runT2OLoadControl(cfg)
 				if err != nil {
 					log.Error(err)
 					os.Exit(1)
@@ -107,7 +121,44 @@ type DumpTableInfo struct {
 	TableSchemaOrale string
 }
 
-func runDumpDataControl(cfg config.OTOConfig) error {
+func createT2OInitMeta(cfg config.OTOConfig) error {
+	log.Info("Start to create t2o_config table")
+	tableSql := `
+	CREATE TABLE IF NOT EXISTS t2o_config(
+		id int(11) NOT NULL AUTO_INCREMENT,
+		table_schema_tidb varchar(64) NOT NULL,
+		table_name_tidb varchar(64) NOT NULL,
+		table_schema_oracle varchar(64) ,
+		dump_status varchar(20) NOT NULL,
+		dump_duration int(11),
+		last_dump_time datetime,
+		generate_ctl_status varchar(20) NOT NULL,
+		generate_ctl_duration int(11),
+		last_generate_ctl_time datetime,
+		load_status varchar(20) NOT NULL,
+		load_duration int(11),
+		last_load_duration datetime,
+		PRIMARY KEY(id),
+		UNIQUE KEY uk_tab(table_schema_tidb,table_name_tidb)
+	)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin`
+	var db *sql.DB
+	var err error
+	db, err = database.OpenMySQLDB(&cfg.TiDBConfig)
+	defer db.Close()
+	if err != nil {
+		log.Error(fmt.Sprintf("Connect source database error:%v", err))
+		return err
+	}
+	_, err = db.Exec(tableSql)
+	if err != nil {
+		log.Error("Create table t2o_config failed!")
+		log.Error(fmt.Sprintf("Execute statement error:%v", err))
+		return err
+	}
+	return nil
+}
+
+func runT2ODumpDataControl(cfg config.OTOConfig) error {
 	var err error
 	err = os.MkdirAll(cfg.T2OInit.DumpDataDir, 0755)
 	if err != nil {
@@ -124,7 +175,7 @@ func runDumpDataControl(cfg config.OTOConfig) error {
 		go func() {
 			defer wg.Done()
 			//log.Debug(fmt.Sprintf("go func i:%d", tmpi))
-			runDumpData(cfg, tmpi, tasks)
+			runT2ODumpData(cfg, tmpi, tasks)
 			//testFunc(tmpi, tasks)
 		}()
 	}
@@ -135,7 +186,7 @@ func runDumpDataControl(cfg config.OTOConfig) error {
 		log.Error(fmt.Sprintf("Connect source database error:%v", err))
 		return err
 	}
-	countQuerySql := fmt.Sprintf(`SELECT count(*) FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, CompareFailed)
+	countQuerySql := fmt.Sprintf(`SELECT count(*) FROM %s.t2o_config where dump_status='%s'`, cfg.TiDBConfig.Database, StatusWaiting)
 	rows, err := db.Query(countQuerySql)
 	if err != nil {
 		log.Error(err)
@@ -145,7 +196,8 @@ func runDumpDataControl(cfg config.OTOConfig) error {
 		rows.Scan(&tableCount)
 	}
 
-	querysql := fmt.Sprintf(`SELECT id,table_schema,table_name,ifnull(table_schema_oracle,table_schema) FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, CompareFailed)
+	querysql := fmt.Sprintf(`SELECT id,table_schema_tidb,table_name_tidb,ifnull(table_schema_oracle,table_schema_tidb) FROM %s.t2o_config where dump_status='%s'`,
+		cfg.TiDBConfig.Database, StatusWaiting)
 	var dumpRow DumpTableInfo
 	rows, err = db.Query(querysql)
 	if err != nil {
@@ -158,17 +210,14 @@ func runDumpDataControl(cfg config.OTOConfig) error {
 
 	db.Close()
 	close(tasks)
-	// var db *sql.DB
-	// var err error	// db, err = database.OpenMySQLDB(&cfg.TiDBConfig)
-
-	// db.Close()
 	wg.Wait()
 	return nil
 }
 
-func runDumpData(cfg config.OTOConfig, threadID int, tasks <-chan DumpTableInfo) {
+func runT2ODumpData(cfg config.OTOConfig, threadID int, tasks <-chan DumpTableInfo) {
 	for task := range tasks {
 		handleCount = handleCount + 1
+		dumpStartTime := time.Now()
 		log.Info(fmt.Sprintf("[Thread-%d]Start to dump %s.%s data", threadID, task.TableSchema, task.TableName))
 		log.Info(fmt.Sprintf("Process dump-data %d/%d", handleCount, tableCount))
 		stdLogPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("dumpling_%s.%s.log", task.TableSchema, task.TableName))
@@ -178,19 +227,39 @@ func runDumpData(cfg config.OTOConfig, threadID int, tasks <-chan DumpTableInfo)
 			cfg.T2OInit.DumpExtraArgs, stdLogPath)
 		c := exec.Command("bash", "-c", cmd)
 		output, err := c.CombinedOutput()
+		dumpEndTime := time.Now()
+		dumpDuration := int(dumpEndTime.Sub(dumpStartTime).Seconds())
+		var updateStatusSql string
 		if err != nil {
 			log.Error(fmt.Sprintf("Run command:%s failed. Check log:%s", cmd, logPath))
 			log.Error(fmt.Sprintf("Run command stderr:%s", output))
-			continue
+			updateStatusSql = fmt.Sprintf(`update %s.t2o_config set
+				dump_status = '%s',dump_duration = %d,last_dump_time = '%s' where id = %d`,
+				cfg.TiDBConfig.Database, StatusFailed, dumpDuration, dumpStartTime.Format("2006-01-02 15:04:05"), task.Id)
 		} else {
 			log.Info(fmt.Sprintf("Run command:%s success.", cmd))
+			updateStatusSql = fmt.Sprintf(`update %s.t2o_config set
+				dump_status = '%s',dump_duration = %d,last_dump_time = '%s' where id = %d`,
+				cfg.TiDBConfig.Database, StatusSuccess, dumpDuration, dumpStartTime.Format("2006-01-02 15:04:05"), task.Id)
+		}
+		var db *sql.DB
+		db, err = database.OpenMySQLDB(&cfg.TiDBConfig)
+		defer db.Close()
+		if err != nil {
+			log.Error(fmt.Sprintf("Connect source database error:%v", err))
+			log.Error("[Thread-%d]Update dump %s.%s status failed", threadID, task.TableSchema, task.TableName)
+		}
+		_, err = db.Exec(updateStatusSql)
+		if err != nil {
+			log.Error(fmt.Sprintf("Execute statement error:%v", err))
+			log.Error("[Thread-%d]Update dump %s.%s status failed", threadID, task.TableSchema, task.TableName)
 		}
 		log.Info(fmt.Sprintf("[Thread-%d]Finished dump %s.%s data", threadID, task.TableSchema, task.TableName))
 	}
 
 }
 
-func runGeneratorControl(cfg config.OTOConfig) error {
+func runT2OGeneratorControl(cfg config.OTOConfig) error {
 	var err error
 	err = os.MkdirAll(cfg.T2OInit.OracleCtlFileDir, 0755)
 	if err != nil {
@@ -208,7 +277,7 @@ func runGeneratorControl(cfg config.OTOConfig) error {
 		go func() {
 			defer wg.Done()
 			//log.Debug(fmt.Sprintf("go func i:%d", tmpi))
-			runGenerator(cfg, tmpi, tasks)
+			runT2OGenerator(cfg, tmpi, tasks)
 			//testFunc(tmpi, tasks)
 		}()
 	}
@@ -219,7 +288,7 @@ func runGeneratorControl(cfg config.OTOConfig) error {
 		log.Error(fmt.Sprintf("Connect source database error:%v", err))
 		return err
 	}
-	countQuerySql := fmt.Sprintf(`SELECT count(*) FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, CompareFailed)
+	countQuerySql := fmt.Sprintf(`SELECT count(*) FROM %s.t2o_config where generate_ctl_status='%s'`, cfg.TiDBConfig.Database, StatusWaiting)
 	rows, err := db.Query(countQuerySql)
 	if err != nil {
 		log.Error(err)
@@ -229,7 +298,8 @@ func runGeneratorControl(cfg config.OTOConfig) error {
 		rows.Scan(&tableCount)
 	}
 
-	querysql := fmt.Sprintf(`SELECT id,table_schema,table_name,ifnull(table_schema_oracle,table_schema) FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, CompareFailed)
+	querysql := fmt.Sprintf(`SELECT id,table_schema_tidb,table_name_tidb,ifnull(table_schema_oracle,table_schema_tidb) FROM %s.t2o_config where generate_ctl_status='%s'`,
+		cfg.TiDBConfig.Database, StatusWaiting)
 	var dumpRow DumpTableInfo
 	rows, err = db.Query(querysql)
 	if err != nil {
@@ -242,18 +312,16 @@ func runGeneratorControl(cfg config.OTOConfig) error {
 
 	db.Close()
 	close(tasks)
-	// var db *sql.DB
-	// var err error	// db, err = database.OpenMySQLDB(&cfg.TiDBConfig)
 
-	// db.Close()
 	wg.Wait()
 	return nil
 }
 
-func runGenerator(cfg config.OTOConfig, threadID int, tasks <-chan DumpTableInfo) {
+func runT2OGenerator(cfg config.OTOConfig, threadID int, tasks <-chan DumpTableInfo) {
 	for task := range tasks {
 		handleCount = handleCount + 1
-		log.Info(fmt.Sprintf("Start to generate oracle sqlldr ctl file for %s.%s", task.TableSchema, task.TableName))
+		generateStartTime := time.Now()
+		log.Info(fmt.Sprintf("[Thread-%d]Start to generate oracle sqlldr ctl file for %s.%s", threadID, task.TableSchema, task.TableName))
 		log.Info(fmt.Sprintf("Process generate-ctl %d/%d", handleCount, tableCount))
 		var db *sql.DB
 		var err error
@@ -304,12 +372,29 @@ func runGenerator(cfg config.OTOConfig, threadID int, tasks <-chan DumpTableInfo
 			log.Error(err)
 			continue
 		}
-
+		generateEndTime := time.Now()
+		generateDuration := int(generateEndTime.Sub(generateStartTime).Seconds())
+		var updateStatusSql string
+		updateStatusSql = fmt.Sprintf(`update %s.t2o_config set
+				generate_ctl_status = '%s',generate_ctl_duration = %d,last_generate_ctl_time = '%s' where id = %d`,
+			cfg.TiDBConfig.Database, StatusSuccess, generateDuration, generateStartTime.Format("2006-01-02 15:04:05"), task.Id)
+		db, err = database.OpenMySQLDB(&cfg.TiDBConfig)
+		defer db.Close()
+		if err != nil {
+			log.Error(fmt.Sprintf("Connect source database error:%v", err))
+			log.Error("[Thread-%d]Update generate ctl %s.%s status failed", threadID, task.TableSchema, task.TableName)
+		}
+		_, err = db.Exec(updateStatusSql)
+		if err != nil {
+			log.Error(fmt.Sprintf("Execute statement error:%v", err))
+			log.Error("[Thread-%d]Update generate ctl %s.%s status failed", threadID, task.TableSchema, task.TableName)
+		}
+		log.Info(fmt.Sprintf("[Thread-%d]Finished generate ctl for %s.%s", threadID, task.TableSchema, task.TableName))
 	}
 
 }
 
-func runLoadControl(cfg config.OTOConfig) error {
+func runT2OLoadControl(cfg config.OTOConfig) error {
 	var err error
 	err = os.MkdirAll(cfg.T2OInit.DumpDataDir, 0755)
 	if err != nil {
@@ -326,7 +411,7 @@ func runLoadControl(cfg config.OTOConfig) error {
 		tmpi := i
 		go func() {
 			defer wg.Done()
-			runLoad(cfg, tmpi, tasks)
+			runT2OLoad(cfg, tmpi, tasks)
 
 		}()
 	}
@@ -337,7 +422,7 @@ func runLoadControl(cfg config.OTOConfig) error {
 		log.Error(fmt.Sprintf("Connect source database error:%v", err))
 		return err
 	}
-	countQuerySql := fmt.Sprintf(`SELECT count(*) FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, CompareFailed)
+	countQuerySql := fmt.Sprintf(`SELECT count(*) FROM %s.t2o_config where load_status='%s'`, cfg.TiDBConfig.Database, StatusWaiting)
 	rows, err := db.Query(countQuerySql)
 	if err != nil {
 		log.Error(err)
@@ -346,7 +431,7 @@ func runLoadControl(cfg config.OTOConfig) error {
 	for rows.Next() {
 		rows.Scan(&tableCount)
 	}
-	querysql := fmt.Sprintf(`SELECT id,table_schema,table_name,ifnull(table_schema_oracle,table_schema) FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, CompareFailed)
+	querysql := fmt.Sprintf(`SELECT id,table_schema,table_name,ifnull(table_schema_oracle,table_schema) FROM %s.t2o_config where load_status='%s'`, cfg.TiDBConfig.Database, StatusWaiting)
 	var dumpRow DumpTableInfo
 	rows, err = db.Query(querysql)
 	if err != nil {
@@ -365,9 +450,10 @@ func runLoadControl(cfg config.OTOConfig) error {
 	return nil
 }
 
-func runLoad(cfg config.OTOConfig, threadID int, tasks <-chan DumpTableInfo) error {
+func runT2OLoad(cfg config.OTOConfig, threadID int, tasks <-chan DumpTableInfo) error {
 	for task := range tasks {
 		handleCount = handleCount + 1
+		loadStartTime := time.Now()
 		if cfg.T2OInit.TruncateBeforeLoad == true {
 			var db *sql.DB
 			var err error
@@ -395,18 +481,36 @@ func runLoad(cfg config.OTOConfig, threadID int, tasks <-chan DumpTableInfo) err
 		stdLogPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sqlldr_load_%s.%s.log", task.TableSchemaOrale, task.TableName))
 		cmd := fmt.Sprintf("%s %s/%s control=%s log=%s %s> %s 2>&1", cfg.T2OInit.SqlldrBinPath, cfg.OracleConfig.User, cfg.OracleConfig.Password, ctlFilePath, sqlldrLogPath, cfg.T2OInit.SqlldrExtraArgs, stdLogPath)
 		c := exec.Command("bash", "-c", cmd)
-		// cmdTest := fmt.Sprintf("%s %s", binPath, confPath)
-		// c := exec.Command("bash", "-c", cmdTest)
 		output, err := c.CombinedOutput()
+		loadEndTime := time.Now()
+		loadDuration := int(loadEndTime.Sub(loadStartTime).Seconds())
+		var updateStatusSql string
 		if err != nil {
 			log.Error(fmt.Sprintf("Run command:%s failed. Check log:%s", cmd, logPath))
 			log.Error(fmt.Sprintf("Run command stderr:%s", output))
-			continue
+			updateStatusSql = fmt.Sprintf(`update %s.t2o_config set
+				load_status = '%s',load_duration = %d,last_load_time = '%s' where id = %d`,
+				cfg.TiDBConfig.Database, StatusFailed, loadDuration, loadStartTime.Format("2006-01-02 15:04:05"), task.Id)
 
 		} else {
 			log.Info(fmt.Sprintf("Run command:%s success.", cmd))
-
+			updateStatusSql = fmt.Sprintf(`update %s.t2o_config set
+				load_status = '%s',load_duration = %d,last_load_time = '%s' where id = %d`,
+				cfg.TiDBConfig.Database, StatusSuccess, loadDuration, loadStartTime.Format("2006-01-02 15:04:05"), task.Id)
 		}
+		var db *sql.DB
+		db, err = database.OpenMySQLDB(&cfg.TiDBConfig)
+		defer db.Close()
+		if err != nil {
+			log.Error(fmt.Sprintf("Connect source database error:%v", err))
+			log.Error("[Thread-%d]Update load %s.%s status failed", threadID, task.TableSchema, task.TableName)
+		}
+		_, err = db.Exec(updateStatusSql)
+		if err != nil {
+			log.Error(fmt.Sprintf("Execute statement error:%v", err))
+			log.Error("[Thread-%d]Update load %s.%s status failed", threadID, task.TableSchema, task.TableName)
+		}
+		log.Info(fmt.Sprintf("[Thread-%d]Finished load %s.%s data", threadID, task.TableSchema, task.TableName))
 	}
 
 	return nil

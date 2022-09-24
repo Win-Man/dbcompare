@@ -3,7 +3,6 @@ log-level = "debug"
 log-path = "dbcompare.log"
 log-dir = "./work/log"
 
-
 [operator]
 concurrency = 5
 
@@ -14,6 +13,9 @@ port = 4000
 user = "root"
 password = ""
 database = "test"
+status-port = 10080
+pd-addr = "127.0.0.1:2379"
+
 
 [oracle-config]
 host = '1.2.3.4'
@@ -35,7 +37,7 @@ bin-path = "./work/bin/o2t-sync-diff"
 dumpling-bin-path = "./dumpling"
 sqlldr-bin-path = "./sqlldr"
 sqlldr-extra-args = ""
-dump-data-dir = "./work/dump"
+dump-data-dir = "./work/tidbdump"
 dump-extra-args = "--no-schemas --no-header"
 oracle-ctl-file-dir = "./work/ctl"
 ctl-template = "./config/ctl.tmpl"
@@ -43,7 +45,13 @@ truncate-before-load = false
 
 [o2t-init]
 sqlldr2-bin-path = "./sqlldr2"
+sqlldr2-extra-args = " batch=yes field=\"0x7c0x230x7c\" record=\"0x7c0x2b0x7c0x0a\" charset=ZHS16GBK safe=yes"
+dump-data-dir = "./work/oracledump"
 lightning-bin-path = "./tidb-lightning"
+lightning-toml-template = "./config/lightning_toml.tmpl"
+lightning-extra-args = " "
+
+
 
 
 

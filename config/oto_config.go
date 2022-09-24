@@ -18,8 +18,9 @@ type OTOConfig struct {
 	Performance     PerformanceConfig     `toml:"performance" json:"performance"`
 	TiDBConfig      DBConfig              `toml:"tidb-config" json:"tidb-config"`
 	OracleConfig    OracleDBConfig        `toml:"oracle-config" json:"oracle-config"`
-	SyncDiffControl SyncDiffControlConfig `toml:"sync-diff-control-config" json:"sync-diff-control-config"`
-	T2OInit         T2OInitConfig         `toml:"t2o-init-config" json:"t2o-init-config"`
+	SyncDiffControl SyncDiffControlConfig `toml:"sync-diff-control" json:"sync-diff-control"`
+	T2OInit         T2OInitConfig         `toml:"t2o-init" json:"t2o-init"`
+	O2TInit         O2TInitConfig         `toml:"o2t-init" json:"o2t-init"`
 }
 
 type PerformanceConfig struct {
@@ -41,6 +42,15 @@ type T2OInitConfig struct {
 	SqlldrBinPath      string `toml:"sqlldr-bin-path" json:"sqlldr-bin-path"`
 	SqlldrExtraArgs    string `toml:"sqlldr-extra-args" json:"sqlldr-extra-args"`
 	TruncateBeforeLoad bool   `toml:"truncate-before-load" json:"truncate-before-load"`
+}
+
+type O2TInitConfig struct {
+	Sqlldr2BinPath        string `toml:"sqlldr2-bin-path" json:"sqlldr2-bin-path"`
+	Sqlldr2ExtraArgs      string `toml:"sqlldr2-extra-args" json:"sqlldr2-extra-args"`
+	DumpDataDir           string `toml:"dump-data-dir" json:"dump-data-dir"`
+	LightningBinPath      string `toml:"lightning-bin-path" json:"lightning-bin-path"`
+	LightningTomlTemplate string `toml:"lightning-toml-template" json:"lightning-toml-template"`
+	LightningExtraArgs    string `toml:"lightning-extra-args" json:"lightning-extra-args"`
 }
 
 // InitConfig Func
