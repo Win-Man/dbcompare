@@ -197,7 +197,7 @@ func runO2TDumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.O2TC
 		dumpStartTime := time.Now()
 		log.Info(fmt.Sprintf("[Thread-%d]Start to dump %s.%s data", threadID, task.TableSchemaOracle, task.TableNameTidb))
 		log.Info(fmt.Sprintf("Process dump-data %d/%d", handleCount, tableCount))
-		stdLogPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sqlldr2_%s.%s.log", task.TableSchemaOracle, task.TableNameTidb))
+		stdLogPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sqluldr2_%s.%s.log", task.TableSchemaOracle, task.TableNameTidb))
 		dataPath := filepath.Join(cfg.O2TInit.DumpDataDir, fmt.Sprintf("%s.%s.%%B.csv",
 			task.TableSchemaOracle, task.TableNameTidb))
 		cmd := fmt.Sprintf("%s user=%s/%s@%s query=%s.%s file=%s %s > %s 2>&1",
