@@ -382,12 +382,12 @@ func runT2OGenerator(cfg config.OTOConfig, threadID int, tasks <-chan DumpTableI
 		defer db.Close()
 		if err != nil {
 			log.Error(fmt.Sprintf("Connect source database error:%v", err))
-			log.Error("[Thread-%d]Update generate ctl %s.%s status failed", threadID, task.TableSchema, task.TableName)
+			log.Error(fmt.Sprintf("[Thread-%d]Update generate ctl %s.%s status failed", threadID, task.TableSchema, task.TableName))
 		}
 		_, err = db.Exec(updateStatusSql)
 		if err != nil {
 			log.Error(fmt.Sprintf("Execute statement error:%v", err))
-			log.Error("[Thread-%d]Update generate ctl %s.%s status failed", threadID, task.TableSchema, task.TableName)
+			log.Error(fmt.Sprintf("[Thread-%d]Update generate ctl %s.%s status failed", threadID, task.TableSchema, task.TableName))
 		}
 		log.Info(fmt.Sprintf("[Thread-%d]Finished generate ctl for %s.%s", threadID, task.TableSchema, task.TableName))
 	}

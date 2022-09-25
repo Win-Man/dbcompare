@@ -28,11 +28,13 @@ type Log struct {
 }
 
 type DBConfig struct {
-	Host     string `toml:"host" json:"host"`
-	Port     int    `toml:"port" json:"port"`
-	User     string `toml:"user" json:"user"`
-	Password string `toml:"password" json:"password"`
-	Database string `toml:"database" json:"database"`
+	Host       string `toml:"host" json:"host"`
+	Port       int    `toml:"port" json:"port"`
+	User       string `toml:"user" json:"user"`
+	Password   string `toml:"password" json:"password"`
+	Database   string `toml:"database" json:"database"`
+	StatusPort int    `toml:"status-port" json:"status-port"`
+	PDAddr     string `toml:"pd-addr" json:"pd-addr"`
 }
 
 type OracleDBConfig struct {

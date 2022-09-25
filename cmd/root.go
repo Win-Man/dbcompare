@@ -55,7 +55,7 @@ func init() {
 
 	// rootCmd.PersistentFlags().Int64Var(&timeout, "timeout", 5, "Timeout in seconds to execute")
 	// rootCmd.PersistentFlags().BoolVarP(&isTest, "yes", "y", false, "run test")
-	rootCmd.AddCommand(newSqlDiffCmd(), newSyncDiffCmd(), newT2OInitCmd())
+	rootCmd.AddCommand(newSqlDiffCmd(), newSyncDiffCmd(), newT2OInitCmd(), newO2TInitCmd())
 	rootCmd.Flags().BoolVarP(&version, "version", "V", false, "view dbcompare version")
 
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.cobra.yaml)")

@@ -50,6 +50,7 @@ type O2TInitConfig struct {
 	DumpDataDir           string `toml:"dump-data-dir" json:"dump-data-dir"`
 	LightningBinPath      string `toml:"lightning-bin-path" json:"lightning-bin-path"`
 	LightningTomlTemplate string `toml:"lightning-toml-template" json:"lightning-toml-template"`
+	LightningTomlDir      string `toml:"lightning-toml-dir" json:"lightning-toml-dir"`
 	LightningExtraArgs    string `toml:"lightning-extra-args" json:"lightning-extra-args"`
 }
 
