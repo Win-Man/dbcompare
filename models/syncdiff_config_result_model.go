@@ -25,7 +25,7 @@ type SyncdiffConfigModel struct {
 	CheckIgnoreNum    int       `json:"check_ignore_num" gorm:"type:int"`
 	State             string    `json:"state" gorm:"type:varchar(32)"`
 	ConfigHash        string    `gorm:"config_hash;type:varchar(50)" json:"config_hash"`
-	UpdateTime        time.Time `gorm:"update_time;type:datetime;default:'1999-01-00 00:00:00'" json:"update_time"`
+	UpdateTime        time.Time `gorm:"update_time;type:datetime;default:'1999-01-01 00:00:00'" json:"update_time"`
 	IgnoreColumns     string    `gorm:"ignore_columns;type:varchar(128)" json:"ignore_columns"`
 	FilterClauseTidb  string    `gorm:"filter_clause_tidb;type:varchar(128)" json:"filter_clause_tidb"`
 	FilterClauseOra   string    `gorm:"filter_clause_ora;type:varchar(128)" json:"filter_clause_ora"`
