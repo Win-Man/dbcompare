@@ -248,7 +248,7 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan models.Syncdif
 		task.SyncStatus = SyncRunning
 		task.Remark = fmt.Sprintf("%d", threadID)
 		res := database.DB.Save(&task)
-		if res.Error != nil{
+		if res.Error != nil {
 			log.Error(res.Error)
 		}
 		log.Info(fmt.Sprintf("[Thread-%d]Finish update config to running id:%d %s", threadID, task.Id, syncTableName))
@@ -280,9 +280,8 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan models.Syncdif
 			continue
 		}
 		//Do sync-diff
-		confPath := filepath.Join(cfg.SyncDiffControl.ConfDir, fmt.Sprintf("sync_diff_%s.%s.toml", tableSchema, tableName))
-		logPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sync_diff_%s.%s.log", tableSchema, tableName))
-		rtCode := runSyncDiffTask(cfg.SyncDiffControl.BinPath, confPath, logPath)
+
+		rtCode := runSyncDiffTask(cfg, tableSchema, tableName)
 
 		syncEndTime := time.Now()
 		durationTime := int(syncEndTime.Sub(syncStartTime).Seconds())
@@ -366,17 +365,18 @@ func generateSyncDiffConfig(tableSchema string, tableName string, tableSchemaTar
 	return nil
 }
 
-func runSyncDiffTask(binPath string, confPath string, logPath string) string {
+func runSyncDiffTask(cfg config.OTOConfig, tableSchema string, tableName string) string {
 	var rtCode string
-	log.Info(fmt.Sprintf("Start to run o2t-sync-diff program:%s -config %s > %s",
-		binPath, confPath, logPath))
-	cmd := fmt.Sprintf("%s -config %s > %s", binPath, confPath, logPath)
+	log.Info(fmt.Sprintf("Start to run o2t-sync-diff for %s.%s", tableSchema, tableName))
+	confPath := filepath.Join(cfg.SyncDiffControl.ConfDir, fmt.Sprintf("sync_diff_%s.%s.toml", tableSchema, tableName))
+	stdLogPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sync_diff_%s.%s.log", tableSchema, tableName))
+	cmd := fmt.Sprintf("%s -config %s > %s 2>&1", cfg.SyncDiffControl.BinPath, confPath, stdLogPath)
 	c := exec.Command("bash", "-c", cmd)
 	// cmdTest := fmt.Sprintf("%s %s", binPath, confPath)
 	// c := exec.Command("bash", "-c", cmdTest)
 	output, err := c.CombinedOutput()
 	if err != nil {
-		log.Error(fmt.Sprintf("Run command:%s failed. Check log:%s", cmd, logPath))
+		log.Error(fmt.Sprintf("Run command:%s failed. Check log:%s", cmd, stdLogPath))
 		log.Error(fmt.Sprintf("Run command stderr:%s", output))
 		rtCode = CompareFailed
 	} else {

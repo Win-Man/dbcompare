@@ -420,7 +420,7 @@ func runT2OLoad(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OConfi
 		loadEndTime := time.Now()
 		loadDuration := int(loadEndTime.Sub(loadStartTime).Seconds())
 		if err != nil {
-			log.Error(fmt.Sprintf("Run command:%s failed. Check log:%s", cmd, logPath))
+			log.Error(fmt.Sprintf("Run command:%s failed. Check log:%s", cmd, stdLogPath))
 			log.Error(fmt.Sprintf("Run command stderr:%s", output))
 			task.LoadStatus = StatusFailed
 			task.LoadDuration = loadDuration

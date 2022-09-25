@@ -209,7 +209,7 @@ func runO2TDumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.O2TC
 		dumpEndTime := time.Now()
 		dumpDuration := int(dumpEndTime.Sub(dumpStartTime).Seconds())
 		if err != nil {
-			log.Error(fmt.Sprintf("Run command:%s failed. Check log:%s", cmd, logPath))
+			log.Error(fmt.Sprintf("Run command:%s failed. Check log:%s", cmd, stdLogPath))
 			log.Error(fmt.Sprintf("Run command stderr:%s", output))
 			task.DumpStatus = StatusFailed
 			task.DumpDuration = dumpDuration
@@ -302,7 +302,7 @@ func runO2TLoadData(cfg config.OTOConfig) error {
 	loadEndTime := time.Now()
 	loadDuration := int(loadEndTime.Sub(loadStartTime).Seconds())
 	if err != nil {
-		log.Error(fmt.Sprintf("Run command:%s failed. Check log:%s", cmd, logPath))
+		log.Error(fmt.Sprintf("Run command:%s failed. Check log:%s", cmd, lightningStdPath))
 		log.Error(fmt.Sprintf("Run command stderr:%s", output))
 		res := database.DB.Model(models.O2TConfigModel{}).
 			Where("dump_status = ?", StatusSuccess).
