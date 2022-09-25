@@ -83,7 +83,12 @@ func newSyncDiffCmd() *cobra.Command {
 				fmt.Printf(fmt.Sprintf("insert into %s.syncdiff_config_result(table_schema,table_name,sync_status) select table_schema,table_name,'%s' from information_schema.tables where table_schema='mydb' \n",
 					cfg.TiDBConfig.Database, SyncWaiting))
 			case "run":
-				err := runSyncDiffControl(cfg)
+				err := database.InitDB(cfg.TiDBConfig)
+				if err != nil {
+					log.Error(err)
+					os.Exit(1)
+				}
+				err = runSyncDiffControl(cfg)
 				if err != nil {
 					log.Error(err)
 					os.Exit(1)

@@ -3,7 +3,7 @@ log-level = "debug"
 log-path = "dbcompare.log"
 log-dir = "./work/log"
 
-[operator]
+[performance]
 concurrency = 5
 
 
@@ -38,7 +38,7 @@ dumpling-bin-path = "./dumpling"
 sqlldr-bin-path = "./sqlldr"
 sqlldr-extra-args = ""
 dump-data-dir = "./work/tidbdump"
-dump-extra-args = "--no-schemas --no-header"
+dump-extra-args = "--filetype csv -t 8 --csv-separator \"|+|\"  --csv-delimiter \"\" --csv-null-value \"\" --no-header --escape-backslash"
 oracle-ctl-file-dir = "./work/ctl"
 ctl-template = "./config/ctl.tmpl"
 truncate-before-load = false

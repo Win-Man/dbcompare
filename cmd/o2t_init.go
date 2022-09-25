@@ -57,7 +57,11 @@ func newO2TInitCmd() *cobra.Command {
 				}
 				log.Info("Finished prepare without errors.")
 				fmt.Printf("Create table success.\nPls init table data,refer sql:\n")
-				fmt.Printf("INSERT INTO %s.o2t_config() VALUES ", cfg.TiDBConfig.Database)
+				fmt.Printf(`INSERT INTO %s.o2t_config(
+					table_schema_tidb,table_name_tidb,table_schema_oracle,
+					dump_status,generate_ctl_status,load_status) 
+					VALUES ('mydb','mytab','ordb','%s','%s','%s')`,
+					cfg.TiDBConfig.Database, StatusWaiting, StatusWaiting, StatusWaiting)
 			case "dump-data":
 				err := database.InitDB(cfg.TiDBConfig)
 				if err != nil {
