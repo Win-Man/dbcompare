@@ -24,6 +24,7 @@ import (
 
 	"github.com/Win-Man/dbcompare/config"
 	"github.com/Win-Man/dbcompare/database"
+	"github.com/Win-Man/dbcompare/models"
 	"github.com/Win-Man/dbcompare/pkg/logger"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -48,8 +49,8 @@ type SyncDiffTemplate struct {
 }
 
 var batchid string
-var tableCount int
-var handleCount int
+var tableCount int64
+var handleCount int64
 
 func newSyncDiffCmd() *cobra.Command {
 
@@ -67,14 +68,20 @@ func newSyncDiffCmd() *cobra.Command {
 			log.Debug(fmt.Sprintf("arguments:%s", strings.Join(args, ",")))
 			switch args[0] {
 			case "prepare":
-				err := createConfigTables(cfg)
+				err := database.InitDB(cfg.TiDBConfig)
+				if err != nil {
+					log.Error(err)
+					os.Exit(1)
+				}
+				err = createConfigTables(cfg)
 				if err != nil {
 					log.Error(err)
 					os.Exit(1)
 				}
 				log.Info("Finished prepare without errors.")
 				fmt.Printf("Create table success.\nPls init table data,refer sql:\n")
-				fmt.Printf(fmt.Sprintf("insert into %s.syncdiff_config_result(table_schema,table_name,sync_status) select table_schema,table_name,'%s' from information_schema.tables where table_schema='mydb' \n", cfg.TiDBConfig.Database, SyncWaiting))
+				fmt.Printf(fmt.Sprintf("insert into %s.syncdiff_config_result(table_schema,table_name,sync_status) select table_schema,table_name,'%s' from information_schema.tables where table_schema='mydb' \n",
+					cfg.TiDBConfig.Database, SyncWaiting))
 			case "run":
 				err := runSyncDiffControl(cfg)
 				if err != nil {
@@ -94,108 +101,20 @@ func newSyncDiffCmd() *cobra.Command {
 }
 
 func createConfigTables(cfg config.OTOConfig) error {
-	log.Info("Start to create syncdiff_config_result and syncdiff_config_result_his table")
-	table_sql := `
-	CREATE TABLE IF NOT EXISTS syncdiff_config_result (
-		id int(11) NOT NULL AUTO_INCREMENT,
-		updatetime datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-		table_schema_oracle varchar(64) ,
-		table_schema varchar(64) NOT NULL,
-		table_name varchar(64) NOT NULL,
-		batchid varchar(128) ,
-		table_count int(11) ,
-		sync_status varchar(32) ,
-		sync_starttime datetime ,
-		sync_endtime datetime ,
-		sync_duration int(11) ,
-		sync_messages varchar(1000) ,
-		job_starttime datetime ,
-		chunk_num int(11),
-		check_success_num int(11),
-		check_failed_num int(11),
-		check_ignore_num int(11),
-		state varchar(32),
-		config_hash varchar(50),
-		update_time datetime,
-		ignore_columns varchar(128) ,
-		filter_clause_tidb varchar(128) ,
-		filter_clause_ora varchar(128) ,
-		chunk_size int DEFAULT 100000,
-		check_thread_count int DEFAULT 10,
-		use_snapshot varchar(10) ,
-		snapshot_source varchar(100) ,
-		snapshot_target varchar(100) ,
-		use_tso varchar(10) ,
-		tso_info varchar(100) ,
-		source_info varchar(256) ,
-		target_info varchar(256) ,
-		contain_datatypes varchar(256) ,
-		table_label varchar(128) ,
-		remark varchar(128) ,
-		PRIMARY KEY (id) ,
-		UNIQUE KEY uk_tab (table_schema,table_name)
-	  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin 
-	`
-	table_his_sql := `
-	CREATE TABLE  IF NOT EXISTS syncdiff_config_result_his (
-		id int(11) NOT NULL ,
-		updatetime datetime DEFAULT CURRENT_TIMESTAMP,
-		table_schema_oracle varchar(64) ,
-		table_schema varchar(64) NOT NULL,
-		table_name varchar(64) NOT NULL,
-		batchid varchar(128) ,
-		table_count int(11) ,
-		sync_status varchar(32) ,
-		sync_starttime datetime ,
-		sync_endtime datetime ,
-		sync_duration int(11) ,
-		sync_messages varchar(1000) ,
-		job_starttime datetime ,
-		chunk_num int(11),
-		check_success_num int(11),
-		check_failed_num int(11),
-		check_ignore_num int(11),
-		state varchar(32),
-		config_hash varchar(50),
-		update_time datetime,
-		ignore_columns varchar(128) ,
-		filter_clause_tidb varchar(128) ,
-		filter_clause_ora varchar(128) ,
-		chunk_size int DEFAULT 100000,
-		check_thread_count int DEFAULT 10,
-		use_snapshot varchar(10) ,
-		snapshot_source varchar(100) ,
-		snapshot_target varchar(100) ,
-		use_tso varchar(10) ,
-		tso_info varchar(100) ,
-		source_info varchar(256) ,
-		target_info varchar(256) ,
-		contain_datatypes varchar(256) ,
-		table_label varchar(128) ,
-		remark varchar(128) ,
-		archivetime datetime DEFAULT CURRENT_TIMESTAMP,
-		KEY uk_tab (table_name,table_schema)
-	  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin 
-	`
-	var db *sql.DB
-	var err error
-	db, err = database.OpenMySQLDB(&cfg.TiDBConfig)
-	defer db.Close()
-	if err != nil {
-		log.Error(fmt.Sprintf("Connect source database error:%v", err))
-		return err
-	}
-	_, err = db.Exec(table_sql)
-	if err != nil {
-		log.Error("Create table syncdiff_config_result failed!")
-		log.Error(fmt.Sprintf("Execute statement error:%v", err))
-		return err
-	}
-	_, err = db.Exec(table_his_sql)
-	if err != nil {
-		log.Error("Create table syncdiff_config_result_his failed!")
-		log.Error(fmt.Sprintf("Execute statement error:%v", err))
-		return err
+	log.Info("Start to create syncdiff_config_result table")
+
+	if !database.DB.Migrator().HasTable(&models.SyncdiffConfigModel{}) {
+		err := database.DB.Migrator().CreateTable(&models.SyncdiffConfigModel{})
+		if err != nil {
+			log.Error(fmt.Sprintf("Create table %s.syncdiff_config_result failed!Error:%v", cfg.TiDBConfig.Database, err))
+			return err
+		}
+	} else {
+		err := database.DB.AutoMigrate(&models.SyncdiffConfigModel{})
+		if err != nil {
+			log.Error(fmt.Sprintf("Migrate table %s.syncdiff_config_result failed!Error:%v", cfg.TiDBConfig.Database, err))
+			return err
+		}
 	}
 
 	return nil
@@ -216,7 +135,7 @@ func runSyncDiffControl(cfg config.OTOConfig) error {
 		return err
 	}
 	threadCount := cfg.Performance.Concurrency
-	tasks := make(chan int, threadCount)
+	tasks := make(chan models.SyncdiffConfigModel, threadCount)
 	var wg sync.WaitGroup
 	handleCount = 0
 	for i := 1; i <= threadCount; i++ {
@@ -229,35 +148,14 @@ func runSyncDiffControl(cfg config.OTOConfig) error {
 			//testFunc(tmpi, tasks)
 		}()
 	}
-	var db *sql.DB
+	database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status = ?", SyncWaiting).Count(&tableCount)
 
-	db, err = database.OpenMySQLDB(&cfg.TiDBConfig)
-	if err != nil {
-		log.Error(fmt.Sprintf("Connect source database error:%v", err))
-		return err
-	}
-	countQuerySql := fmt.Sprintf(`SELECT count(*) FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, SyncWaiting)
-	rows, err := db.Query(countQuerySql)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	for rows.Next() {
-		rows.Scan(&tableCount)
-	}
-	querysql := fmt.Sprintf(`SELECT id FROM %s.syncdiff_config_result where sync_status='%s'`, cfg.TiDBConfig.Database, SyncWaiting)
-	var rowid int
-	rows, err = db.Query(querysql)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	for rows.Next() {
-		rows.Scan(&rowid)
-		tasks <- rowid
+	var records []models.SyncdiffConfigModel
+	database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status = ?", SyncWaiting).Scan(&records)
+	for _, record := range records {
+		tasks <- record
 	}
 
-	db.Close()
 	close(tasks)
 	// var db *sql.DB
 	// var err error
@@ -268,50 +166,42 @@ func runSyncDiffControl(cfg config.OTOConfig) error {
 	return nil
 }
 
-func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan int) {
+func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan models.SyncdiffConfigModel) {
 
-	for taskid := range tasks {
+	for task := range tasks {
 		handleCount = handleCount + 1
-		log.Info(fmt.Sprintf("[Thread-%d]Start to run sync diff for id:%d", threadID, taskid))
+		log.Info(fmt.Sprintf("[Thread-%d]Start to run sync diff for id:%d", threadID, task.Id))
 		log.Info(fmt.Sprintf("Process sync-diff %d/%d", handleCount, tableCount))
-		var db *sql.DB
-		var err error
-		db, err = database.OpenMySQLDB(&cfg.TiDBConfig)
-		defer db.Close()
-		if err != nil {
-			log.Error(fmt.Sprintf("[Thread-%d]Connect source database error:%v", threadID, err))
-			continue
-		}
-		stmtQuery := fmt.Sprintf(`
-            select concat(table_schema,'.',table_name),ifnull(ignore_columns,'') 
-                  ,concat(ifnull(table_schema_oracle,table_schema),'.',table_name)
-                  ,ifnull(chunk_size,1000),ifnull(check_thread_count,10)
-                  ,ifnull(use_snapshot,'NO'),snapshot_source,snapshot_target
-            from %s.syncdiff_config_result t 
-            where sync_status='%s' and id = %d
-            `, cfg.TiDBConfig.Database, SyncWaiting, taskid)
 
-		rows, err := db.Query(stmtQuery)
-		if err == sql.ErrNoRows {
-			log.Info(fmt.Sprintf("[Thread-%d]id:%d sync_status != %s", threadID, taskid, SyncWaiting))
-			continue
-		} else if err != nil {
-			log.Error(err)
-			continue
-		}
-		var syncTableName string
-		var ignoreColumns string
+		// stmtQuery := fmt.Sprintf(`
+		//     select concat(table_schema,'.',table_name),ifnull(ignore_columns,'')
+		//           ,concat(ifnull(table_schema_oracle,table_schema),'.',table_name)
+		//           ,ifnull(chunk_size,1000),ifnull(check_thread_count,10)
+		//           ,ifnull(use_snapshot,'NO'),snapshot_source,snapshot_target
+		//     from %s.syncdiff_config_result t
+		//     where sync_status='%s' and id = %d
+		//     `, cfg.TiDBConfig.Database, SyncWaiting, taskid)
+
+		var syncTableName = fmt.Sprintf("%s.%s", task.TableSchema, task.TableNameTidb)
+		var ignoreColumns = task.IgnoreColumns
+
 		var syncTableNameTarget string
-		var chunk_size int
-		var check_thread_count int
+		if task.TableSchemaOracle == "" {
+			syncTableNameTarget = syncTableName
+		} else {
+			syncTableNameTarget = fmt.Sprintf("%s.%s", task.TableSchemaOracle, task.TableNameTidb)
+		}
+		var chunk_size = task.ChunkSize
+		var check_thread_count = task.CheckThreadCount
 		var use_snapshot string
-		var snapshot_source string
-		var snapshot_target string
+		if task.UseSnapshot == "" {
+			use_snapshot = "NO"
+		}
+		var snapshot_source = task.SnapshotSource
+		var snapshot_target = task.SnapshotTarget
 		var tableSchema string
 		var tableName string
 		var tableSchemaTarget string
-		rows.Next()
-		rows.Scan(&syncTableName, &ignoreColumns, &syncTableNameTarget, &chunk_size, &check_thread_count, &use_snapshot, &snapshot_source, &snapshot_target)
 		tableSchema = strings.Split(syncTableName, ".")[0]
 		tableName = strings.Split(syncTableName, ".")[1]
 		tableSchemaTarget = strings.Split(syncTableNameTarget, ".")[0]
@@ -327,23 +217,38 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan int) {
 			snapshot_source = ""
 			snapshot_target = ""
 		}
-		stmt_updt0 := fmt.Sprintf(`
-			update %s.syncdiff_config_result
-			set batchid = '%s',
-				job_starttime = now(),
-				sync_status = '%s',
-				sync_starttime = null,
-				sync_endtime = null ,
-				remark = '%d',
-				chunk_num = null,
-				check_success_num = null,
-				check_failed_num = null,
-				check_ignore_num = null
-			where id=%d`, cfg.TiDBConfig.Database, batchid, SyncRunning, threadID, taskid)
-		db.Exec(stmt_updt0)
-		log.Info(fmt.Sprintf("[Thread-%d]Finish update config to running id:%d %s", threadID, taskid, syncTableName))
-		stmtQuery = fmt.Sprintf("select count(1) from %s t", syncTableName)
-		rows, err = db.Query(stmtQuery)
+		// stmt_updt0 := fmt.Sprintf(`
+		// 	update %s.syncdiff_config_result
+		// 	set batchid = '%s',
+		// 		job_starttime = now(),
+		// 		sync_status = '%s',
+		// 		sync_starttime = null,
+		// 		sync_endtime = null ,
+		// 		remark = '%d',
+		// 		chunk_num = null,
+		// 		check_success_num = null,
+		// 		check_failed_num = null,
+		// 		check_ignore_num = null
+		// 	where id=%d`, cfg.TiDBConfig.Database, batchid, SyncRunning, threadID, taskid)
+		// db.Exec(stmt_updt0)
+		task.Batchid = batchid
+		task.JobStarttime = time.Now()
+		task.SyncStatus = SyncRunning
+		task.Remark = fmt.Sprintf("%d", threadID)
+		database.DB.Save(&task)
+
+		log.Info(fmt.Sprintf("[Thread-%d]Finish update config to running id:%d %s", threadID, task.Id, syncTableName))
+
+		var db *sql.DB
+		var err error
+		db, err = database.OpenMySQLDB(&cfg.TiDBConfig)
+		defer db.Close()
+		if err != nil {
+			log.Error(fmt.Sprintf("Connect source database error:%v", err))
+			continue
+		}
+		stmtQuery := fmt.Sprintf("select count(1) from %s t", syncTableName)
+		rows, err := db.Query(stmtQuery)
 		if err != nil {
 			log.Error(err)
 			continue
@@ -351,7 +256,7 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan int) {
 		var rowCount int
 		rows.Next()
 		rows.Scan(&rowCount)
-		log.Info(fmt.Sprintf("[Thread-%d]id:%d table %s count in tidb:%d", threadID, taskid, syncTableName, rowCount))
+		log.Info(fmt.Sprintf("[Thread-%d]id:%d table %s count in tidb:%d", threadID, task.Id, syncTableName, rowCount))
 		syncStartTime := time.Now()
 		//Generate sync condig
 		err = generateSyncDiffConfig(tableSchema, tableName, tableSchemaTarget, ignoreColumns,
@@ -373,7 +278,7 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan int) {
 			sync_starttime = '%s',
 			sync_endtime = '%s',
 			sync_duration = %d where id = %d
-		`, cfg.TiDBConfig.Database, rowCount, rtCode, syncStartTime.Format("2006-01-02 15:05:04"), syncEndTime.Format("2006-01-02 15:05:04"), durationTime, taskid)
+		`, cfg.TiDBConfig.Database, rowCount, rtCode, syncStartTime.Format("2006-01-02 15:05:04"), syncEndTime.Format("2006-01-02 15:05:04"), durationTime, task.Id)
 		_, err = db.Exec(stmtUpdate1)
 		if err != nil {
 			log.Error(err)
@@ -392,7 +297,7 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan int) {
 				t1.state = t2.state,
 				t1.config_hash = t2.config_hash,
 				t1.update_time = t2.update_time
-			where id = %d`, cfg.TiDBConfig.Database, taskid)
+			where id = %d`, cfg.TiDBConfig.Database, task.Id)
 		_, err = db.Exec(stmtUpdt2)
 		if err != nil {
 			log.Error(fmt.Sprintf("[Thread-%d]Update sync summary log failed. error:%v", threadID, err))
@@ -401,7 +306,7 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan int) {
 			log.Info(fmt.Sprintf("[Thread-%d]Update sync summary success.", threadID))
 		}
 
-		log.Info(fmt.Sprintf("[Thread-%d]Finished run sync diff for id:%d %s.%s", threadID, taskid, tableSchema, tableName))
+		log.Info(fmt.Sprintf("[Thread-%d]Finished run sync diff for id:%d %s.%s", threadID, task.Id, tableSchema, tableName))
 
 	}
 }
