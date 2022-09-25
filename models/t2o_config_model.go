@@ -7,19 +7,19 @@ import (
 )
 
 type T2OConfigModel struct {
-	Id                      int       `json:"id" gorm:"type:int;autoIncrement,primaryKey"`
-	TableSchemaTidb         string    `json:"table_schema_tidb" gorm:"type:varchar(64);uniqueIndex:uk_tab,priority:1;not null"`
-	TableNameTidb           string    `json:"table_name_tidb" gorm:"type:varchar(64);uniqueIndex:uk_tab,priority:2;not null"`
-	TableSchemaOracle       string    `json:"table_schema_oracle" gorm:"type:varchar(64)"`
-	DumpStatus              string    `json:"dump_status" gorm:"type:varchar(20);not null"`
-	DumpDuration            int       `json:"dump_duration" gorm:"type:int"`
-	LastDumpTime        time.Time `json:"last_dump_time" gorm:"type:datetime"`
-	GenerateCtlStatus       string    `json:"generate_ctl_status" gorm:"type:varchar(20);not null"`
-	GenerateCtlDuration     int       `json:"generate_ctl_duration" gorm:"type:int"`
-	LastGenerateCtlTime time.Time `json:"last_generate_ctl_time" gorm:"type:datetime"`
-	LoadStatus              string    `json:"load_status" gorm:"type:varchar(20);not null"`
-	LoadDuration            int       `json:"load_duration" gorm:"type:int"`
-	LastLoadTime        time.Time `json:"last_load_time" gorm:"type:datetime"`
+	Id                  int       `json:"id" gorm:"type:int;autoIncrement,primaryKey"`
+	TableSchemaTidb     string    `json:"table_schema_tidb" gorm:"type:varchar(64);uniqueIndex:uk_tab,priority:1;not null"`
+	TableNameTidb       string    `json:"table_name_tidb" gorm:"type:varchar(64);uniqueIndex:uk_tab,priority:2;not null"`
+	TableSchemaOracle   string    `json:"table_schema_oracle" gorm:"type:varchar(64)"`
+	DumpStatus          string    `json:"dump_status" gorm:"type:varchar(20);not null"`
+	DumpDuration        int       `json:"dump_duration" gorm:"type:int"`
+	LastDumpTime        time.Time `json:"last_dump_time" gorm:"type:datetime;default:'1999-01-01 00:00:00'"`
+	GenerateCtlStatus   string    `json:"generate_ctl_status" gorm:"type:varchar(20);not null"`
+	GenerateCtlDuration int       `json:"generate_ctl_duration" gorm:"type:int"`
+	LastGenerateCtlTime time.Time `json:"last_generate_ctl_time" gorm:"type:datetime;default:'1999-01-01 00:00:00'"`
+	LoadStatus          string    `json:"load_status" gorm:"type:varchar(20);not null"`
+	LoadDuration        int       `json:"load_duration" gorm:"type:int"`
+	LastLoadTime        time.Time `json:"last_load_time" gorm:"type:datetime;default:'1999-01-01 00:00:00'"`
 }
 
 //TableName of GORM model

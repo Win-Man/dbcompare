@@ -127,6 +127,7 @@ func createConfigTables(cfg config.OTOConfig) error {
 
 func runSyncDiffControl(cfg config.OTOConfig) error {
 	//generateSyncDiffConfig("dbdb", "tabletable")
+	log.Debug("Start to run SyncdiffControl")
 	batchid = time.Now().Format("20060102150405")
 	var err error
 	err = os.MkdirAll(cfg.SyncDiffControl.ConfDir, 0755)
@@ -153,10 +154,16 @@ func runSyncDiffControl(cfg config.OTOConfig) error {
 			//testFunc(tmpi, tasks)
 		}()
 	}
-	database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status = ?", SyncWaiting).Count(&tableCount)
-
+	res := database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status = ?", SyncWaiting).Count(&tableCount)
+	if res.Error != nil {
+		log.Error("Execute SQL get error:%v", res.Error)
+	}
+	log.Debug(fmt.Sprintf("tableCount:%d", tableCount))
 	var records []models.SyncdiffConfigModel
-	database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status = ?", SyncWaiting).Scan(&records)
+	res = database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status = ?", SyncWaiting).Scan(&records)
+	if res.Error != nil {
+		log.Error("Execute SQL get error:%v", res.Error)
+	}
 	for _, record := range records {
 		tasks <- record
 	}
@@ -240,8 +247,10 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan models.Syncdif
 		task.JobStarttime = time.Now()
 		task.SyncStatus = SyncRunning
 		task.Remark = fmt.Sprintf("%d", threadID)
-		database.DB.Save(&task)
-
+		res := database.DB.Save(&task)
+		if res.Error != nil{
+			log.Error(res.Error)
+		}
 		log.Info(fmt.Sprintf("[Thread-%d]Finish update config to running id:%d %s", threadID, task.Id, syncTableName))
 
 		var db *sql.DB

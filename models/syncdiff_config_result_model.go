@@ -14,18 +14,18 @@ type SyncdiffConfigModel struct {
 	Batchid           string    `json:"batchid" gorm:"type:varchar(128)"`
 	TableCount        int       `json:"table_count" gorm:"type:int"`
 	SyncStatus        string    `json:"sync_status" gorm:"type:varchar(32)"`
-	SyncStarttime     time.Time `json:"sync_starttime" gorm:"type:datetime"`
-	SyncEndtime       time.Time `json:"sync_endtime" gorm:"type:datetime"`
+	SyncStarttime     time.Time `json:"sync_starttime" gorm:"type:datetime;default:'1999-01-01 00:00:00'"`
+	SyncEndtime       time.Time `json:"sync_endtime" gorm:"type:datetime;default:'1999-01-01 00:00:00'"`
 	SyncDuration      int       `json:"sync_duration" gorm:"type:int"`
 	SyncMessages      string    `json:"sync_messages" gorm:"type:varchar(1000)"`
-	JobStarttime      time.Time `json:"job_starttime" gorm:"type:datetime"`
+	JobStarttime      time.Time `json:"job_starttime" gorm:"type:datetime;default:'1999-01-01 00:00:00'"`
 	ChunkNum          int       `json:"chunk_num" gorm:"type:int"`
 	CheckSuccessNum   int       `json:"check_success_num" gorm:"type:int"`
 	CheckFailedNum    int       `json:"check_failed_num" gorm:"type:int"`
 	CheckIgnoreNum    int       `json:"check_ignore_num" gorm:"type:int"`
 	State             string    `json:"state" gorm:"type:varchar(32)"`
 	ConfigHash        string    `gorm:"config_hash;type:varchar(50)" json:"config_hash"`
-	UpdateTime        time.Time `gorm:"update_time;type:datetime" json:"update_time"`
+	UpdateTime        time.Time `gorm:"update_time;type:datetime;default:'1999-01-00 00:00:00'" json:"update_time"`
 	IgnoreColumns     string    `gorm:"ignore_columns;type:varchar(128)" json:"ignore_columns"`
 	FilterClauseTidb  string    `gorm:"filter_clause_tidb;type:varchar(128)" json:"filter_clause_tidb"`
 	FilterClauseOra   string    `gorm:"filter_clause_ora;type:varchar(128)" json:"filter_clause_ora"`

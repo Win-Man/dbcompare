@@ -181,9 +181,15 @@ func runT2ODumpDataControl(cfg config.OTOConfig) error {
 		}()
 	}
 
-	database.DB.Model(&models.T2OConfigModel{}).Where("dump_status = ?", StatusWaiting).Count(&tableCount)
+	res := database.DB.Model(&models.T2OConfigModel{}).Where("dump_status = ?", StatusWaiting).Count(&tableCount)
+	if res.Error != nil {
+		log.Error(res.Error)
+	}
 	var records []models.T2OConfigModel
-	database.DB.Model(&models.T2OConfigModel{}).Where("dump_status = ?", StatusWaiting).Scan(&records)
+	res = database.DB.Model(&models.T2OConfigModel{}).Where("dump_status = ?", StatusWaiting).Scan(&records)
+	if res.Error != nil {
+		log.Error(res.Error)
+	}
 	for _, record := range records {
 		tasks <- record
 	}
@@ -221,7 +227,10 @@ func runT2ODumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OC
 			task.DumpDuration = dumpDuration
 			task.LastDumpTime = dumpStartTime
 		}
-		database.DB.Save(&task)
+		res := database.DB.Save(&task)
+		if res.Error != nil {
+			log.Error(res.Error)
+		}
 		log.Info(fmt.Sprintf("[Thread-%d]Finished dump %s.%s data", threadID, task.TableSchemaTidb, task.TableNameTidb))
 	}
 
@@ -249,9 +258,15 @@ func runT2OGeneratorControl(cfg config.OTOConfig) error {
 			//testFunc(tmpi, tasks)
 		}()
 	}
-	database.DB.Model(&models.T2OConfigModel{}).Where("generate_ctl_status = ?", StatusWaiting).Count(&tableCount)
+	res := database.DB.Model(&models.T2OConfigModel{}).Where("generate_ctl_status = ?", StatusWaiting).Count(&tableCount)
+	if res.Error != nil {
+		log.Error(res.Error)
+	}
 	var records []models.T2OConfigModel
-	database.DB.Model(&models.T2OConfigModel{}).Where("generate_ctl_status = ?", StatusWaiting).Scan(&records)
+	res = database.DB.Model(&models.T2OConfigModel{}).Where("generate_ctl_status = ?", StatusWaiting).Scan(&records)
+	if res.Error != nil {
+		log.Error(res.Error)
+	}
 	for _, record := range records {
 		tasks <- record
 	}
@@ -321,7 +336,10 @@ func runT2OGenerator(cfg config.OTOConfig, threadID int, tasks <-chan models.T2O
 		task.GenerateCtlStatus = StatusSuccess
 		task.GenerateCtlDuration = generateDuration
 		task.LastGenerateCtlTime = generateStartTime
-		database.DB.Save(&task)
+		res := database.DB.Save(&task)
+		if res.Error != nil {
+			log.Error(res.Error)
+		}
 
 		log.Info(fmt.Sprintf("[Thread-%d]Finished generate ctl for %s.%s", threadID, task.TableSchemaOracle, task.TableNameTidb))
 	}
@@ -349,9 +367,15 @@ func runT2OLoadControl(cfg config.OTOConfig) error {
 
 		}()
 	}
-	database.DB.Model(&models.T2OConfigModel{}).Where("load_status = ?", StatusWaiting).Count(&tableCount)
+	res := database.DB.Model(&models.T2OConfigModel{}).Where("load_status = ?", StatusWaiting).Count(&tableCount)
+	if res.Error != nil {
+		log.Error(res.Error)
+	}
 	var records []models.T2OConfigModel
-	database.DB.Model(&models.T2OConfigModel{}).Where("load_status = ?", StatusWaiting).Scan(&records)
+	res = database.DB.Model(&models.T2OConfigModel{}).Where("load_status = ?", StatusWaiting).Scan(&records)
+	if res.Error != nil {
+		log.Error(res.Error)
+	}
 	for _, record := range records {
 		tasks <- record
 	}
@@ -408,7 +432,10 @@ func runT2OLoad(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OConfi
 			task.LoadDuration = loadDuration
 			task.LastLoadTime = loadStartTime
 		}
-		database.DB.Save(&task)
+		res := database.DB.Save(&task)
+		if res.Error != nil {
+			log.Error(res.Error)
+		}
 		log.Info(fmt.Sprintf("[Thread-%d]Finished load %s.%s data", threadID, task.TableSchemaOracle, task.TableNameTidb))
 	}
 

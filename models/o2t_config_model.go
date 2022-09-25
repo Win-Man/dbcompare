@@ -13,13 +13,13 @@ type O2TConfigModel struct {
 	TableSchemaOracle    string    `json:"table_schema_oracle" gorm:"type:varchar(64)"`
 	DumpStatus           string    `json:"dump_status" gorm:"type:varchar(20);not null"`
 	DumpDuration         int       `json:"dump_duration" gorm:"type:int"`
-	LastDumpTime         time.Time `json:"last_dump_time" gorm:"type:datetime"`
+	LastDumpTime         time.Time `json:"last_dump_time" gorm:"type:datetime;default:'1999-01-01 00:00:00'"`
 	GenerateConfStatus   string    `json:"generate_conf_status" gorm:"type:varchar(20);not null"`
 	GenerateDuration     int       `json:"generate_conf_duration" gorm:"type:int"`
-	LastGenerateConfTime time.Time `json:"last_generate_conf_time" gorm:"type:datetime"`
+	LastGenerateConfTime time.Time `json:"last_generate_conf_time" gorm:"type:datetime;default:'1999-01-01 00:00:00'"`
 	LoadStatus           string    `json:"load_status" gorm:"type:varchar(20);not null"`
 	LoadDuration         int       `json:"load_duration" gorm:"type:int"`
-	LastLoadTime         time.Time `json:"last_load_time" gorm:"type:datetime"`
+	LastLoadTime         time.Time `json:"last_load_time" gorm:"type:datetime;default:'1999-01-01 00:00:00'"`
 }
 
 //TableName of GORM model

@@ -173,9 +173,15 @@ func runO2TDumpDataControl(cfg config.OTOConfig) error {
 			//testFunc(tmpi, tasks)
 		}()
 	}
-	database.DB.Model(&models.O2TConfigModel{}).Where("dump_status = ?", StatusWaiting).Count(&tableCount)
+	res := database.DB.Model(&models.O2TConfigModel{}).Where("dump_status = ?", StatusWaiting).Count(&tableCount)
+	if res.Error != nil {
+		log.Error(res.Error)
+	}
 	var records []models.O2TConfigModel
-	database.DB.Model(&models.O2TConfigModel{}).Where("dump_status = ?", StatusWaiting).Scan(&records)
+	res = database.DB.Model(&models.O2TConfigModel{}).Where("dump_status = ?", StatusWaiting).Scan(&records)
+	if res.Error != nil {
+		log.Error(res.Error)
+	}
 	for _, record := range records {
 		tasks <- record
 	}
@@ -214,7 +220,10 @@ func runO2TDumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.O2TC
 			task.DumpDuration = dumpDuration
 			task.LastDumpTime = dumpStartTime
 		}
-		database.DB.Save(&task)
+		res := database.DB.Save(&task)
+		if res.Error != nil {
+			log.Error(res.Error)
+		}
 		log.Info(fmt.Sprintf("[Thread-%d]Finished dump %s.%s data", threadID, task.TableSchemaOracle, task.TableNameTidb))
 	}
 }
@@ -259,11 +268,14 @@ func runO2TGenerateConf(cfg config.OTOConfig) error {
 	}
 	generateEndTime := time.Now()
 	generateDuration := int(generateEndTime.Sub(generateStartTime).Seconds())
-	database.DB.Model(models.O2TConfigModel{}).
+	res := database.DB.Model(models.O2TConfigModel{}).
 		Where("dump_status = ?", StatusSuccess).
 		Updates(models.O2TConfigModel{GenerateConfStatus: StatusSuccess,
 			GenerateDuration:     generateDuration,
 			LastGenerateConfTime: generateStartTime})
+	if res.Error != nil {
+		log.Error(res.Error)
+	}
 
 	log.Info("Finished generate tidb-lighting.toml")
 	return nil
@@ -292,19 +304,25 @@ func runO2TLoadData(cfg config.OTOConfig) error {
 	if err != nil {
 		log.Error(fmt.Sprintf("Run command:%s failed. Check log:%s", cmd, logPath))
 		log.Error(fmt.Sprintf("Run command stderr:%s", output))
-		database.DB.Model(models.O2TConfigModel{}).
+		res := database.DB.Model(models.O2TConfigModel{}).
 			Where("dump_status = ?", StatusSuccess).
 			Updates(models.O2TConfigModel{LoadStatus: StatusFailed,
 				LoadDuration: loadDuration,
 				LastLoadTime: loadStartTime})
+		if res.Error != nil {
+			log.Error(res.Error)
+		}
 
 	} else {
 		log.Info(fmt.Sprintf("Run command:%s success.", cmd))
-		database.DB.Model(models.O2TConfigModel{}).
+		res := database.DB.Model(models.O2TConfigModel{}).
 			Where("dump_status = ?", StatusSuccess).
 			Updates(models.O2TConfigModel{LoadStatus: StatusSuccess,
 				LoadDuration: loadDuration,
 				LastLoadTime: loadStartTime})
+		if res.Error != nil {
+			log.Error(res.Error)
+		}
 	}
 	log.Info("Finished load data by tidb-lightning")
 	return nil
