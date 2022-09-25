@@ -44,7 +44,7 @@ type CtlTemplate struct {
 func newT2OInitCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
-		Use:   "t2o-init <prepare|dump-data|generate-conf|load-data|all>",
+		Use:   "t2o-init <prepare|dump-data|generate-ctl|load-data|all>",
 		Short: "t2o-init",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
@@ -85,7 +85,7 @@ func newT2OInitCmd() *cobra.Command {
 					log.Error(err)
 					os.Exit(1)
 				}
-			case "generate-conf":
+			case "generate-ctl":
 				err := database.InitDB(cfg.TiDBConfig)
 				if err != nil {
 					log.Error(err)
