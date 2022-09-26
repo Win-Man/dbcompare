@@ -164,8 +164,7 @@ func runSyncDiffControl(cfg config.OTOConfig) error {
 			//testFunc(tmpi, tasks)
 		}()
 	}
-	
-	
+
 	var records []models.SyncdiffConfigModel
 	res = database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status = ?", SyncWaiting).Scan(&records)
 	if res.Error != nil {
@@ -302,6 +301,9 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan models.Syncdif
 		_, err = db.Exec(stmtUpdate1)
 		if err != nil {
 			log.Error(err)
+			continue
+		}
+		if rtCode == CompareFailed {
 			continue
 		}
 
