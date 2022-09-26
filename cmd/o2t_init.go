@@ -57,11 +57,8 @@ func newO2TInitCmd() *cobra.Command {
 				}
 				log.Info("Finished prepare without errors.")
 				fmt.Printf("Create table success.\nPls init table data,refer sql:\n")
-				fmt.Printf(`INSERT INTO %s.o2t_config(
-					table_schema_tidb,table_name_tidb,table_schema_oracle,
-					dump_status,generate_ctl_status,load_status) 
-					VALUES ('mydb','mytab','ordb','%s','%s','%s')`,
-					cfg.TiDBConfig.Database, StatusWaiting, StatusWaiting, StatusWaiting)
+				fmt.Printf(`INSERT INTO %s.o2t_config(table_schema_tidb,table_name_tidb,table_schema_oracle,dump_status,generate_ctl_status,load_status) VALUES ('mydb','mytab','ordb','%s','%s','%s')`,
+					cfg.TiDBConfig.Database, StatusWaiting, StatusInitialize, StatusInitialize)
 			case "dump-data":
 				err := database.InitDB(cfg.TiDBConfig)
 				if err != nil {
@@ -228,6 +225,8 @@ func runO2TDumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.O2TC
 		} else {
 			log.Info(fmt.Sprintf("Run command:%s success.", cmd))
 			task.DumpStatus = StatusSuccess
+			task.GenerateConfStatus = StatusWaiting
+			task.LoadStatus = StatusWaiting
 			task.DumpDuration = dumpDuration
 			task.LastDumpTime = dumpStartTime
 		}

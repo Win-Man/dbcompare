@@ -69,11 +69,8 @@ func newT2OInitCmd() *cobra.Command {
 				}
 				log.Info("Finished prepare without errors.")
 				fmt.Printf("Create table success.\nPls init table data,refer sql:\n")
-				fmt.Printf(`INSERT INTO %s.t2o_config(
-					table_schema_tidb,table_name_tidb,table_schema_oracle,
-					dump_status,generate_ctl_status,load_status) 
-					VALUES ('mydb','mytab','ordb','%s','%s','%s')`,
-					cfg.TiDBConfig.Database, StatusWaiting, StatusWaiting, StatusWaiting)
+				fmt.Printf(`INSERT INTO %s.t2o_config(table_schema_tidb,table_name_tidb,table_schema_oracle,dump_status,generate_ctl_status,load_status) VALUES ('mydb','mytab','ordb','%s','%s','%s')`,
+					cfg.TiDBConfig.Database, StatusWaiting, StatusInitialize, StatusInitialize)
 			case "dump-data":
 				err := database.InitDB(cfg.TiDBConfig)
 				if err != nil {
@@ -229,6 +226,7 @@ func runT2ODumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OC
 		} else {
 			log.Info(fmt.Sprintf("Run command:%s success.", cmd))
 			task.DumpStatus = StatusSuccess
+			task.GenerateCtlStatus = StatusWaiting
 			task.DumpDuration = dumpDuration
 			task.LastDumpTime = dumpStartTime
 		}
@@ -341,9 +339,21 @@ func runT2OGenerator(cfg config.OTOConfig, threadID int, tasks <-chan models.T2O
 			log.Error(err)
 			continue
 		}
+		// 如果 dumpling 导出 csv 文件不存在
+		_, err = os.Stat(ctltmpl.FilePath)
+		if err != nil {
+			log.Info(fmt.Sprintf("%s file not exists,maybe table is empty", ctltmpl.FilePath))
+			_, err = os.Create(ctltmpl.FilePath)
+			if err != nil {
+				log.Error(fmt.Sprintf("Create empty file:%s failed.Error:%v", ctltmpl.FilePath, err))
+			}
+			continue
+		}
+
 		generateEndTime := time.Now()
 		generateDuration := int(generateEndTime.Sub(generateStartTime).Seconds())
 		task.GenerateCtlStatus = StatusSuccess
+		task.LoadStatus = StatusWaiting
 		task.GenerateCtlDuration = generateDuration
 		task.LastGenerateCtlTime = generateStartTime
 		res := database.DB.Save(&task)
