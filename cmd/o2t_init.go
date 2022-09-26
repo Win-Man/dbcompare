@@ -158,6 +158,10 @@ func runO2TDumpDataControl(cfg config.OTOConfig) error {
 	if err != nil {
 		return err
 	}
+	err = os.MkdirAll(cfg.Log.LogDir,0755)
+	if err != nil{
+		return err
+	}
 
 	threadCount := cfg.Performance.Concurrency
 	tasks := make(chan models.O2TConfigModel, threadCount)
@@ -199,7 +203,7 @@ func runO2TDumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.O2TC
 		log.Info(fmt.Sprintf("Process dump-data %d/%d", handleCount, tableCount))
 		stdLogPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sqluldr2_%s.%s.log", task.TableSchemaOracle, task.TableNameTidb))
 		dataPath := filepath.Join(cfg.O2TInit.DumpDataDir, fmt.Sprintf("%s.%s.%%B.csv",
-			task.TableSchemaOracle, task.TableNameTidb))
+			task.TableSchemaTidb, task.TableNameTidb))
 		cmd := fmt.Sprintf("%s user=%s/%s@%s query=%s.%s file=%s %s > %s 2>&1",
 			cfg.O2TInit.Sqlldr2BinPath, cfg.OracleConfig.User, cfg.OracleConfig.Password,
 			cfg.OracleConfig.ServiceName, strings.ToUpper(task.TableSchemaOracle), strings.ToUpper(task.TableNameTidb),
