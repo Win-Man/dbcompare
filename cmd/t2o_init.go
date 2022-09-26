@@ -320,9 +320,9 @@ func runT2OGenerator(cfg config.OTOConfig, threadID int, tasks <-chan models.T2O
 
 		ctltmpl := CtlTemplate{
 			Character:         "UTF8",
-			FilePath:          filepath.Join(cfg.T2OInit.DumpDataDir, fmt.Sprintf("%s.%s.000000000.csv", task.TableSchemaOracle, task.TableNameTidb)),
-			BadFilePath:       filepath.Join(cfg.T2OInit.OracleCtlFileDir, fmt.Sprintf("%s.%s.bad", task.TableSchemaOracle, task.TableNameTidb)),
-			DiscardFilePath:   filepath.Join(cfg.T2OInit.OracleCtlFileDir, fmt.Sprintf("%s.%s.disc", task.TableSchemaOracle, task.TableNameTidb)),
+			FilePath:          filepath.Join(cfg.T2OInit.DumpDataDir, fmt.Sprintf("%s.%s.000000000.csv", task.TableSchemaTidb, task.TableNameTidb)),
+			BadFilePath:       filepath.Join(cfg.T2OInit.OracleCtlFileDir, fmt.Sprintf("%s.%s.bad", task.TableSchemaTidb, task.TableNameTidb)),
+			DiscardFilePath:   filepath.Join(cfg.T2OInit.OracleCtlFileDir, fmt.Sprintf("%s.%s.disc", task.TableSchemaTidb, task.TableNameTidb)),
 			TableOracleSchema: task.TableSchemaOracle,
 			TableName:         task.TableNameTidb,
 			Columns:           strings.Join(colNames, ","),
