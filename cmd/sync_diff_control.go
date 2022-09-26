@@ -140,6 +140,16 @@ func runSyncDiffControl(cfg config.OTOConfig) error {
 		log.Error(err)
 		return err
 	}
+	res := database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status = ?", SyncWaiting).Count(&tableCount)
+	if res.Error != nil {
+		log.Error("Execute SQL get error:%v", res.Error)
+	}
+	if tableCount == 0 {
+		fmt.Printf("Fetch 0 rows from syncdiff_config_result where dump_status=%s\n", SyncWaiting)
+		log.Info(fmt.Sprintf("Fetch 0 rows from syncdiff_config_result where dump_status=%s", SyncWaiting))
+		return nil
+	}
+
 	threadCount := cfg.Performance.Concurrency
 	tasks := make(chan models.SyncdiffConfigModel, threadCount)
 	var wg sync.WaitGroup
@@ -154,11 +164,8 @@ func runSyncDiffControl(cfg config.OTOConfig) error {
 			//testFunc(tmpi, tasks)
 		}()
 	}
-	res := database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status = ?", SyncWaiting).Count(&tableCount)
-	if res.Error != nil {
-		log.Error("Execute SQL get error:%v", res.Error)
-	}
-	log.Debug(fmt.Sprintf("tableCount:%d", tableCount))
+	
+	
 	var records []models.SyncdiffConfigModel
 	res = database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status = ?", SyncWaiting).Scan(&records)
 	if res.Error != nil {

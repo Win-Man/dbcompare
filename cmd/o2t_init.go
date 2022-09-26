@@ -158,9 +158,19 @@ func runO2TDumpDataControl(cfg config.OTOConfig) error {
 	if err != nil {
 		return err
 	}
-	err = os.MkdirAll(cfg.Log.LogDir,0755)
-	if err != nil{
+	err = os.MkdirAll(cfg.Log.LogDir, 0755)
+	if err != nil {
 		return err
+	}
+
+	res := database.DB.Model(&models.O2TConfigModel{}).Where("dump_status = ?", StatusWaiting).Count(&tableCount)
+	if res.Error != nil {
+		log.Error(res.Error)
+	}
+	if tableCount == 0 {
+		fmt.Printf("Fetch 0 rows from o2t_config where dump_status=%s\n", StatusWaiting)
+		log.Info(fmt.Sprintf("Fetch 0 rows from o2t_config where dump_status=%s", StatusWaiting))
+		return nil
 	}
 
 	threadCount := cfg.Performance.Concurrency
@@ -176,10 +186,6 @@ func runO2TDumpDataControl(cfg config.OTOConfig) error {
 			runO2TDumpData(cfg, tmpi, tasks)
 			//testFunc(tmpi, tasks)
 		}()
-	}
-	res := database.DB.Model(&models.O2TConfigModel{}).Where("dump_status = ?", StatusWaiting).Count(&tableCount)
-	if res.Error != nil {
-		log.Error(res.Error)
 	}
 	var records []models.O2TConfigModel
 	res = database.DB.Model(&models.O2TConfigModel{}).Where("dump_status = ?", StatusWaiting).Scan(&records)

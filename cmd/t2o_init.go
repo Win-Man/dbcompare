@@ -165,6 +165,15 @@ func runT2ODumpDataControl(cfg config.OTOConfig) error {
 	if err != nil {
 		return err
 	}
+	res := database.DB.Model(&models.T2OConfigModel{}).Where("dump_status = ?", StatusWaiting).Count(&tableCount)
+	if res.Error != nil {
+		log.Error("Execute SQL get error:%v", res.Error)
+	}
+	if tableCount == 0 {
+		fmt.Printf("Fetch 0 rows from t2o_config where dump_status=%s\n", StatusWaiting)
+		log.Info(fmt.Sprintf("Fetch 0 rows from t2o_config where dump_status=%s", StatusWaiting))
+		return nil
+	}
 
 	threadCount := cfg.Performance.Concurrency
 	tasks := make(chan models.T2OConfigModel, threadCount)
@@ -181,10 +190,6 @@ func runT2ODumpDataControl(cfg config.OTOConfig) error {
 		}()
 	}
 
-	res := database.DB.Model(&models.T2OConfigModel{}).Where("dump_status = ?", StatusWaiting).Count(&tableCount)
-	if res.Error != nil {
-		log.Error(res.Error)
-	}
 	var records []models.T2OConfigModel
 	res = database.DB.Model(&models.T2OConfigModel{}).Where("dump_status = ?", StatusWaiting).Scan(&records)
 	if res.Error != nil {
@@ -243,7 +248,15 @@ func runT2OGeneratorControl(cfg config.OTOConfig) error {
 		log.Error(err)
 		return err
 	}
-
+	res := database.DB.Model(&models.T2OConfigModel{}).Where("generate_ctl_status = ?", StatusWaiting).Count(&tableCount)
+	if res.Error != nil {
+		log.Error("Execute SQL get error:%v", res.Error)
+	}
+	if tableCount == 0 {
+		fmt.Printf("Fetch 0 rows from t2o_config where generate_ctl_status=%s\n", StatusWaiting)
+		log.Info(fmt.Sprintf("Fetch 0 rows from t2o_config where generate_ctl_status=%s", StatusWaiting))
+		return nil
+	}
 	threadCount := cfg.Performance.Concurrency
 	tasks := make(chan models.T2OConfigModel, threadCount)
 	var wg sync.WaitGroup
@@ -258,10 +271,7 @@ func runT2OGeneratorControl(cfg config.OTOConfig) error {
 			//testFunc(tmpi, tasks)
 		}()
 	}
-	res := database.DB.Model(&models.T2OConfigModel{}).Where("generate_ctl_status = ?", StatusWaiting).Count(&tableCount)
-	if res.Error != nil {
-		log.Error(res.Error)
-	}
+
 	var records []models.T2OConfigModel
 	res = database.DB.Model(&models.T2OConfigModel{}).Where("generate_ctl_status = ?", StatusWaiting).Scan(&records)
 	if res.Error != nil {
@@ -353,7 +363,15 @@ func runT2OLoadControl(cfg config.OTOConfig) error {
 		log.Error(err)
 		return err
 	}
-
+	res := database.DB.Model(&models.T2OConfigModel{}).Where("load_status = ?", StatusWaiting).Count(&tableCount)
+	if res.Error != nil {
+		log.Error("Execute SQL get error:%v", res.Error)
+	}
+	if tableCount == 0 {
+		fmt.Printf("Fetch 0 rows from t2o_config where load_status=%s\n", StatusWaiting)
+		log.Info(fmt.Sprintf("Fetch 0 rows from t2o_config where load_status=%s", StatusWaiting))
+		return nil
+	}
 	threadCount := cfg.Performance.Concurrency
 	tasks := make(chan models.T2OConfigModel, threadCount)
 	var wg sync.WaitGroup
@@ -367,10 +385,7 @@ func runT2OLoadControl(cfg config.OTOConfig) error {
 
 		}()
 	}
-	res := database.DB.Model(&models.T2OConfigModel{}).Where("load_status = ?", StatusWaiting).Count(&tableCount)
-	if res.Error != nil {
-		log.Error(res.Error)
-	}
+
 	var records []models.T2OConfigModel
 	res = database.DB.Model(&models.T2OConfigModel{}).Where("load_status = ?", StatusWaiting).Scan(&records)
 	if res.Error != nil {
