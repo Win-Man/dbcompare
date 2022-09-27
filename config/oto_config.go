@@ -45,8 +45,8 @@ type T2OInitConfig struct {
 }
 
 type O2TInitConfig struct {
-	Sqlldr2BinPath        string `toml:"sqlldr2-bin-path" json:"sqlldr2-bin-path"`
-	Sqlldr2ExtraArgs      string `toml:"sqlldr2-extra-args" json:"sqlldr2-extra-args"`
+	Sqluldr2BinPath        string `toml:"sqluldr2-bin-path" json:"sqluldr2-bin-path"`
+	Sqluldr2ExtraArgs      string `toml:"sqluldr2-extra-args" json:"sqluldr2-extra-args"`
 	DumpDataDir           string `toml:"dump-data-dir" json:"dump-data-dir"`
 	LightningBinPath      string `toml:"lightning-bin-path" json:"lightning-bin-path"`
 	LightningTomlTemplate string `toml:"lightning-toml-template" json:"lightning-toml-template"`

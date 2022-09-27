@@ -209,9 +209,9 @@ func runO2TDumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.O2TC
 			task.TableSchemaTidb, task.TableNameTidb))
 		ctlPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("%s.%s_sqlldr.ctl", strings.ToUpper(task.TableSchemaOracle), strings.ToUpper(task.TableNameTidb)))
 		cmd := fmt.Sprintf("%s user=%s/%s@%s query=%s.%s file=%s control=%s %s > %s 2>&1",
-			cfg.O2TInit.Sqlldr2BinPath, cfg.OracleConfig.User, cfg.OracleConfig.Password,
+			cfg.O2TInit.Sqluldr2BinPath, cfg.OracleConfig.User, cfg.OracleConfig.Password,
 			cfg.OracleConfig.ServiceName, strings.ToUpper(task.TableSchemaOracle), strings.ToUpper(task.TableNameTidb),
-			dataPath, ctlPath, cfg.O2TInit.Sqlldr2ExtraArgs, stdLogPath)
+			dataPath, ctlPath, cfg.O2TInit.Sqluldr2ExtraArgs, stdLogPath)
 		c := exec.Command("bash", "-c", cmd)
 		output, err := c.CombinedOutput()
 		dumpEndTime := time.Now()
@@ -282,7 +282,8 @@ func runO2TGenerateConf(cfg config.OTOConfig) error {
 		Where("dump_status = ?", StatusSuccess).
 		Updates(models.O2TConfigModel{GenerateConfStatus: StatusSuccess,
 			GenerateDuration:     generateDuration,
-			LastGenerateConfTime: generateStartTime})
+			LastGenerateConfTime: generateStartTime,
+			LoadStatus:           StatusWaiting})
 	if res.Error != nil {
 		log.Error(res.Error)
 	}

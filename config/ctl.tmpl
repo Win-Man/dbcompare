@@ -4,4 +4,4 @@ infile "{{ .FilePath }}" "str X'0D0A'"
 badfile "{{ .BadFilePath }}"
 discardfile "{{ .DiscardFilePath }}"
 APPEND INTO TABLE {{ .TableOracleSchema }}.{{ .TableName }}
-fields terminated by "{{ .Terminator }}" trailing nullcols({{ .Columns }})
+fields terminated by "|+|" trailing nullcols({{ .Columns }})

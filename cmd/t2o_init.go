@@ -227,6 +227,7 @@ func runT2ODumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OC
 			log.Info(fmt.Sprintf("Run command:%s success.", cmd))
 			task.DumpStatus = StatusSuccess
 			task.GenerateCtlStatus = StatusWaiting
+			task.LoadStatus = StatusWaiting
 			task.DumpDuration = dumpDuration
 			task.LastDumpTime = dumpStartTime
 		}

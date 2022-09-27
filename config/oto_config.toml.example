@@ -44,8 +44,8 @@ ctl-template = "./config/ctl.tmpl"
 truncate-before-load = false
 
 [o2t-init]
-sqlldr2-bin-path = "./sqlldr2"
-sqlldr2-extra-args = " batch=yes field=\"0x7c0x230x7c\" record=\"0x7c0x2b0x7c0x0a\" charset=ZHS16GBK safe=yes"
+sqluldr2-bin-path = "./sqlldr2"
+sqluldr2-extra-args = " batch=yes field=\"0x7c0x230x7c\" record=\"0x7c0x2b0x7c0x0a\" charset=ZHS16GBK safe=yes"
 dump-data-dir = "./work/oracledump"
 lightning-bin-path = "./tidb-lightning"
 lightning-toml-template = "./config/lightning_toml.tmpl"

@@ -1,6 +1,6 @@
 [lightning]
 level = "info"
-file = "{{ .BatchID }}_lightning.log"
+file = "./{{ .BatchID }}_lightning.log"
 
 [tikv-importer]
 # 选择使用的 local 后端
@@ -12,7 +12,7 @@ sorted-kv-dir = "/sort_dir"
 data-source-dir = "{{ .DumpDataDir }}"
 no-schema=true
 character-set = "utf8mb4"
-data-character-set = "GBK"
+data-character-set = "utf8mb4"
 data-invalid-char-replace = "\uFFFD"
 
 [mydumper.csv]
