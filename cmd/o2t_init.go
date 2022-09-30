@@ -25,10 +25,13 @@ import (
 	"github.com/Win-Man/dbcompare/config"
 	"github.com/Win-Man/dbcompare/database"
 	"github.com/Win-Man/dbcompare/models"
+	"github.com/Win-Man/dbcompare/pkg"
 	"github.com/Win-Man/dbcompare/pkg/logger"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
+
+var ProcessBar *pkg.Bar
 
 func newO2TInitCmd() *cobra.Command {
 
@@ -148,6 +151,7 @@ type LightingTomlTemplate struct {
 
 func createO2TInitMeta(cfg config.OTOConfig) error {
 	log.Info("Start to create o2t_config table")
+	fmt.Println("Start to create o2t_config table")
 	if !database.DB.Migrator().HasTable(&models.O2TConfigModel{}) {
 		err := database.DB.Migrator().CreateTable(&models.O2TConfigModel{})
 		if err != nil {
@@ -184,7 +188,7 @@ func runO2TDumpDataControl(cfg config.OTOConfig) error {
 	if tableCount == 0 {
 		return nil
 	}
-
+	ProcessBar = pkg.New(tableCount, pkg.WithFiller("="))
 	threadCount := cfg.Performance.Concurrency
 	tasks := make(chan models.O2TConfigModel, threadCount)
 	var wg sync.WaitGroup
@@ -210,6 +214,7 @@ func runO2TDumpDataControl(cfg config.OTOConfig) error {
 	close(tasks)
 
 	wg.Wait()
+	ProcessBar.Finish()
 	return nil
 }
 
@@ -217,6 +222,7 @@ func runO2TDumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.O2TC
 
 	for task := range tasks {
 		handleCount = handleCount + 1
+		ProcessBar.Done(1)
 
 		log.Info(fmt.Sprintf("[Thread-%d]Start to dump %s.%s data", threadID, task.TableSchemaOracle, task.TableNameTidb))
 		log.Info(fmt.Sprintf("Process dump-data %d/%d", handleCount, tableCount))
@@ -398,9 +404,18 @@ func runGetRowsControl(cfg config.OTOConfig) error {
 			runGetRows(cfg, tasks)
 		}()
 	}
+	res := database.DB.Model(&models.O2TConfigModel{}).Where("load_status = ?", StatusWaiting).Count(&tableCount)
+	if res.Error != nil {
+		log.Error(res.Error)
+	}
+	if tableCount == 0 {
+		return nil
+	}
+	fmt.Printf("Get rows count process\n")
+	ProcessBar = pkg.New(tableCount, pkg.WithFiller("="))
 
 	var records []models.O2TConfigModel
-	res := database.DB.Model(&models.O2TConfigModel{}).Where("load_status = ?", StatusWaiting).Scan(&records)
+	res = database.DB.Model(&models.O2TConfigModel{}).Where("load_status = ?", StatusWaiting).Scan(&records)
 	if res.Error != nil {
 		log.Error(res.Error)
 	}
@@ -428,7 +443,7 @@ func runGetRows(cfg config.OTOConfig, tasks <-chan models.O2TConfigModel) {
 		if res.Error != nil {
 			log.Error(res.Error)
 		}
-
+		ProcessBar.Done(1)
 	}
 }
 

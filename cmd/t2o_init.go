@@ -25,6 +25,7 @@ import (
 	"github.com/Win-Man/dbcompare/config"
 	"github.com/Win-Man/dbcompare/database"
 	"github.com/Win-Man/dbcompare/models"
+	"github.com/Win-Man/dbcompare/pkg"
 	"github.com/Win-Man/dbcompare/pkg/logger"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -171,6 +172,7 @@ func runT2ODumpDataControl(cfg config.OTOConfig) error {
 	if tableCount == 0 {
 		return nil
 	}
+	ProcessBar = pkg.New(tableCount, pkg.WithFiller("="))
 
 	threadCount := cfg.Performance.Concurrency
 	tasks := make(chan models.T2OConfigModel, threadCount)
@@ -198,12 +200,14 @@ func runT2ODumpDataControl(cfg config.OTOConfig) error {
 
 	close(tasks)
 	wg.Wait()
+	ProcessBar.Finish()
 	return nil
 }
 
 func runT2ODumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OConfigModel) {
 	for task := range tasks {
 		handleCount = handleCount + 1
+		ProcessBar.Done(1)
 
 		log.Info(fmt.Sprintf("[Thread-%d]Start to dump %s.%s data", threadID, task.TableSchemaTidb, task.TableNameTidb))
 		log.Info(fmt.Sprintf("Process dump-data %d/%d", handleCount, tableCount))
@@ -273,6 +277,7 @@ func runT2OGeneratorControl(cfg config.OTOConfig) error {
 	if tableCount == 0 {
 		return nil
 	}
+	ProcessBar = pkg.New(tableCount, pkg.WithFiller("="))
 	threadCount := cfg.Performance.Concurrency
 	tasks := make(chan models.T2OConfigModel, threadCount)
 	var wg sync.WaitGroup
@@ -299,12 +304,14 @@ func runT2OGeneratorControl(cfg config.OTOConfig) error {
 	close(tasks)
 
 	wg.Wait()
+	ProcessBar.Finish()
 	return nil
 }
 
 func runT2OGenerator(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OConfigModel) {
 	for task := range tasks {
 		handleCount = handleCount + 1
+		ProcessBar.Done(1)
 		generateStartTime := time.Now()
 		log.Info(fmt.Sprintf("[Thread-%d]Start to generate oracle sqlldr ctl file for %s.%s", threadID, task.TableSchemaOracle, task.TableNameTidb))
 		log.Info(fmt.Sprintf("Process generate-ctl %d/%d", handleCount, tableCount))
@@ -407,6 +414,7 @@ func runT2OLoadControl(cfg config.OTOConfig) error {
 	if tableCount == 0 {
 		return nil
 	}
+	ProcessBar = pkg.New(tableCount,)
 	threadCount := cfg.Performance.Concurrency
 	tasks := make(chan models.T2OConfigModel, threadCount)
 	var wg sync.WaitGroup
@@ -432,12 +440,14 @@ func runT2OLoadControl(cfg config.OTOConfig) error {
 	close(tasks)
 
 	wg.Wait()
+	ProcessBar.Finish()
 	return nil
 }
 
 func runT2OLoad(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OConfigModel) error {
 	for task := range tasks {
 		handleCount = handleCount + 1
+		ProcessBar.Done(1)
 		loadStartTime := time.Now()
 		task.LoadStatus = StatusRunning
 		task.LastLoadTime = loadStartTime

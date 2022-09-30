@@ -8,10 +8,12 @@ replace (
 	github.com/Win-Man/dbcompare/config => ./dbcompare/config
 	github.com/Win-Man/dbcompare/database => ./dbcompare/database
 	github.com/Win-Man/dbcompare/models => ./dbcompare/models
+	github.com/Win-Man/dbcompare/pkg => ./dbcompare/pkg
 )
 
 require (
 	github.com/BurntSushi/toml v0.4.1
+	github.com/briandowns/spinner v1.19.0 // indirect
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/godror/godror v0.30.2
 	github.com/pkg/errors v0.9.1 // indirect
