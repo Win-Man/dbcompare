@@ -12,6 +12,7 @@
 package cmd
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"os/exec"
@@ -92,6 +93,13 @@ func newO2TInitCmd() *cobra.Command {
 					log.Error(err)
 					os.Exit(1)
 				}
+				if cfg.Performance.CheckRowCount {
+					err = runGetRowsControl(cfg)
+					if err != nil {
+						log.Error(err)
+						os.Exit(1)
+					}
+				}
 			case "all":
 				err := database.InitDB(cfg.TiDBConfig)
 				if err != nil {
@@ -112,6 +120,13 @@ func newO2TInitCmd() *cobra.Command {
 				if err != nil {
 					log.Error(err)
 					os.Exit(1)
+				}
+				if cfg.Performance.CheckRowCount {
+					err = runGetRowsControl(cfg)
+					if err != nil {
+						log.Error(err)
+						os.Exit(1)
+					}
 				}
 			default:
 				return cmd.Help()
@@ -199,18 +214,33 @@ func runO2TDumpDataControl(cfg config.OTOConfig) error {
 }
 
 func runO2TDumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.O2TConfigModel) {
+
 	for task := range tasks {
 		handleCount = handleCount + 1
-		dumpStartTime := time.Now()
+
 		log.Info(fmt.Sprintf("[Thread-%d]Start to dump %s.%s data", threadID, task.TableSchemaOracle, task.TableNameTidb))
 		log.Info(fmt.Sprintf("Process dump-data %d/%d", handleCount, tableCount))
+
+		// get oracle table row count
+		if cfg.Performance.CheckRowCount {
+			i, err := getOracleRowsCount(cfg.OracleConfig, task.TableSchemaOracle, task.TableNameTidb)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			task.OracleRowsCount = i
+		}
+
 		// update dump_status=running
+		dumpStartTime := time.Now()
 		task.DumpStatus = StatusRunning
 		task.LastDumpTime = dumpStartTime
+
 		res := database.DB.Save(&task)
 		if res.Error != nil {
 			log.Error(res.Error)
 		}
+
 		stdLogPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sqluldr2_%s.%s.log", task.TableSchemaOracle, task.TableNameTidb))
 		dataPath := filepath.Join(cfg.O2TInit.DumpDataDir, fmt.Sprintf("%s.%s.%%B.csv",
 			task.TableSchemaTidb, task.TableNameTidb))
@@ -285,7 +315,7 @@ func runO2TGenerateConf(cfg config.OTOConfig) error {
 	generateEndTime := time.Now()
 	generateDuration := int(generateEndTime.Sub(generateStartTime).Seconds())
 	res := database.DB.Model(models.O2TConfigModel{}).
-		Where("dump_status = ?", StatusSuccess).
+		Where("generate_conf_status = ?", StatusWaiting).
 		Updates(models.O2TConfigModel{GenerateConfStatus: StatusSuccess,
 			GenerateDuration:     generateDuration,
 			LastGenerateConfTime: generateStartTime,
@@ -322,7 +352,7 @@ func runO2TLoadData(cfg config.OTOConfig) error {
 		log.Error(fmt.Sprintf("Run command:%s failed. Check log:%s", cmd, lightningStdPath))
 		log.Error(fmt.Sprintf("Run command stderr:%s", output))
 		res := database.DB.Model(models.O2TConfigModel{}).
-			Where("dump_status = ?", StatusSuccess).
+			Where("load_status = ?", StatusWaiting).
 			Updates(models.O2TConfigModel{LoadStatus: StatusFailed,
 				LoadDuration: loadDuration,
 				LastLoadTime: loadStartTime})
@@ -332,15 +362,120 @@ func runO2TLoadData(cfg config.OTOConfig) error {
 
 	} else {
 		log.Info(fmt.Sprintf("Run command:%s success.", cmd))
-		res := database.DB.Model(models.O2TConfigModel{}).
-			Where("dump_status = ?", StatusSuccess).
-			Updates(models.O2TConfigModel{LoadStatus: StatusSuccess,
-				LoadDuration: loadDuration,
-				LastLoadTime: loadStartTime})
-		if res.Error != nil {
-			log.Error(res.Error)
+		if cfg.Performance.CheckRowCount {
+			res := database.DB.Model(models.O2TConfigModel{}).
+				Where("load_status = ?", StatusWaiting).
+				Updates(models.O2TConfigModel{LoadStatus: StatusWaiting,
+					LoadDuration: loadDuration,
+					LastLoadTime: loadStartTime})
+			if res.Error != nil {
+				log.Error(res.Error)
+			}
+		} else {
+			res := database.DB.Model(models.O2TConfigModel{}).
+				Where("load_status = ?", StatusWaiting).
+				Updates(models.O2TConfigModel{LoadStatus: StatusSuccess,
+					LoadDuration: loadDuration,
+					LastLoadTime: loadStartTime})
+			if res.Error != nil {
+				log.Error(res.Error)
+			}
 		}
+
 	}
 	log.Info("Finished load data by tidb-lightning")
 	return nil
+}
+
+func runGetRowsControl(cfg config.OTOConfig) error {
+
+	threadCount := cfg.Performance.Concurrency
+	tasks := make(chan models.O2TConfigModel, threadCount)
+	var wg sync.WaitGroup
+	for i := 1; i <= threadCount; i++ {
+		wg.Add(1)
+		go func() {
+			runGetRows(cfg, tasks)
+		}()
+	}
+
+	var records []models.O2TConfigModel
+	res := database.DB.Model(&models.O2TConfigModel{}).Where("load_status = ?", StatusWaiting).Scan(&records)
+	if res.Error != nil {
+		log.Error(res.Error)
+	}
+	for _, record := range records {
+		tasks <- record
+	}
+	close(tasks)
+	wg.Wait()
+	return nil
+}
+
+func runGetRows(cfg config.OTOConfig, tasks <-chan models.O2TConfigModel) {
+	for task := range tasks {
+		// get tidb table row count
+		if cfg.Performance.CheckRowCount {
+			i, err := getTidbRowsCount(cfg.TiDBConfig, task.TableSchemaTidb, task.TableNameTidb)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			task.TidbRowsCount = i
+			task.LoadStatus = StatusSuccess
+		}
+		res := database.DB.Save(&task)
+		if res.Error != nil {
+			log.Error(res.Error)
+		}
+
+	}
+}
+
+func getOracleRowsCount(dbcfg config.OracleDBConfig, tableSchemaOracle string, tableName string) (int, error) {
+	log.Debug(fmt.Sprintf("Get Oracle %s.%s rows count", tableSchemaOracle, tableName))
+	var db *sql.DB
+	var err error
+	db, err = database.OpenOracleDB(&dbcfg)
+	defer db.Close()
+	if err != nil {
+		log.Error(fmt.Sprintf("Connect source database error:%v", err))
+		return -1, err
+	}
+	querySql := fmt.Sprintf("select count(1) from %s ", tableName)
+	log.Debug(fmt.Sprintf("Sql: %s", querySql))
+	rows, err := db.Query(querySql)
+	if err != nil {
+		log.Error(err)
+		return -1, err
+	}
+	var oracleRowsCount int
+	for rows.Next() {
+		rows.Scan(&oracleRowsCount)
+	}
+	return oracleRowsCount, nil
+}
+
+func getTidbRowsCount(dbcfg config.DBConfig, tableSchema string, tableName string) (int, error) {
+	log.Debug(fmt.Sprintf("Get TiDB %s.%s rows count", tableSchema, tableName))
+	var db *sql.DB
+	var err error
+	db, err = database.OpenMySQLDB(&dbcfg)
+	defer db.Close()
+	if err != nil {
+		log.Error(fmt.Sprintf("Connect source database error:%v", err))
+		return -1, err
+	}
+	querySql := fmt.Sprintf("select count(1) from %s.%s ", tableSchema, tableName)
+	log.Debug(fmt.Sprintf("Sql: %s", querySql))
+	rows, err := db.Query(querySql)
+	if err != nil {
+		log.Error(err)
+		return -1, err
+	}
+	var tidbRowsCount int
+	for rows.Next() {
+		rows.Scan(&tidbRowsCount)
+	}
+	return tidbRowsCount, nil
 }

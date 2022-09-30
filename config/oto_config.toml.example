@@ -5,6 +5,7 @@ log-dir = "./work/log"
 
 [performance]
 concurrency = 5
+check-row-count = true
 
 
 [tidb-config]

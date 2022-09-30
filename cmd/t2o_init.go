@@ -204,9 +204,20 @@ func runT2ODumpDataControl(cfg config.OTOConfig) error {
 func runT2ODumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OConfigModel) {
 	for task := range tasks {
 		handleCount = handleCount + 1
-		dumpStartTime := time.Now()
+
 		log.Info(fmt.Sprintf("[Thread-%d]Start to dump %s.%s data", threadID, task.TableSchemaTidb, task.TableNameTidb))
 		log.Info(fmt.Sprintf("Process dump-data %d/%d", handleCount, tableCount))
+		// get tidb table row count
+		if cfg.Performance.CheckRowCount {
+			i, err := getTidbRowsCount(cfg.TiDBConfig, task.TableSchemaTidb, task.TableNameTidb)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			task.TidbRowsCount = i
+		}
+
+		dumpStartTime := time.Now()
 		task.DumpStatus = StatusRunning
 		task.LastDumpTime = dumpStartTime
 		// update dump_status = running
@@ -465,6 +476,16 @@ func runT2OLoad(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OConfi
 		output, err := c.CombinedOutput()
 		loadEndTime := time.Now()
 		loadDuration := int(loadEndTime.Sub(loadStartTime).Seconds())
+		// get oracle rows count
+		if cfg.Performance.CheckRowCount {
+			i, err := getOracleRowsCount(cfg.OracleConfig, task.TableSchemaOracle, task.TableNameTidb)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			task.OracleRowsCount = i
+		}
+
 		if err != nil {
 			log.Error(fmt.Sprintf("Run command:%s failed. Check log:%s", cmd, stdLogPath))
 			log.Error(fmt.Sprintf("Run command stderr:%s", output))

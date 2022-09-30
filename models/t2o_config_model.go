@@ -20,6 +20,8 @@ type T2OConfigModel struct {
 	LoadStatus          string    `json:"load_status" gorm:"type:varchar(20);not null"`
 	LoadDuration        int       `json:"load_duration" gorm:"type:int"`
 	LastLoadTime        time.Time `json:"last_load_time" gorm:"type:datetime;default:'1999-01-01 00:00:00'"`
+	OracleRowsCount     int       `json:"oracle_rows_count" gorm:"type:int;default:-1"`
+	TidbRowsCount       int       `json:"tidb_rows_count" gorm:"type:int;default:-1"`
 }
 
 //TableName of GORM model
