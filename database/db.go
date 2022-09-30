@@ -29,9 +29,9 @@ func OpenMySQLDB(dbcfg *config.DBConfig) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.SetConnMaxLifetime(5 * time.Minute)
-	db.SetConnMaxIdleTime(5 * time.Minute)
-	db.SetMaxOpenConns(300)
+	db.SetConnMaxLifetime(60 * time.Minute)
+	db.SetConnMaxIdleTime(60 * time.Minute)
+	db.SetMaxOpenConns(200)
 	db.SetMaxIdleConns(100)
 	return db, nil
 }

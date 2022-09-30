@@ -140,13 +140,13 @@ func runSyncDiffControl(cfg config.OTOConfig) error {
 		log.Error(err)
 		return err
 	}
-	res := database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status = ?", SyncWaiting).Count(&tableCount)
+	res := database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status in (?,?)", SyncWaiting, SyncRunning).Count(&tableCount)
 	if res.Error != nil {
 		log.Error("Execute SQL get error:%v", res.Error)
 	}
+	fmt.Printf("Fetch %d rows from syncdiff_config_result where sync_status in (%s,%s)\n", tableCount, SyncWaiting, SyncRunning)
+	log.Info(fmt.Sprintf("Fetch %d rows from syncdiff_config_result where sync_status in (%s,%s)", tableCount, SyncWaiting, SyncRunning))
 	if tableCount == 0 {
-		fmt.Printf("Fetch 0 rows from syncdiff_config_result where dump_status=%s\n", SyncWaiting)
-		log.Info(fmt.Sprintf("Fetch 0 rows from syncdiff_config_result where dump_status=%s", SyncWaiting))
 		return nil
 	}
 
@@ -166,7 +166,7 @@ func runSyncDiffControl(cfg config.OTOConfig) error {
 	}
 
 	var records []models.SyncdiffConfigModel
-	res = database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status = ?", SyncWaiting).Scan(&records)
+	res = database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status in (?,?)", SyncWaiting, SyncRunning).Scan(&records)
 	if res.Error != nil {
 		log.Error("Execute SQL get error:%v", res.Error)
 	}
@@ -188,17 +188,8 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan models.Syncdif
 
 	for task := range tasks {
 		handleCount = handleCount + 1
-		log.Info(fmt.Sprintf("[Thread-%d]Start to run sync diff for id:%d", threadID, task.Id))
+		log.Info(fmt.Sprintf("[Thread-%d]Start to run sync diff for %s.%s", threadID, task.TableSchema, task.TableNameTidb))
 		log.Info(fmt.Sprintf("Process sync-diff %d/%d", handleCount, tableCount))
-
-		// stmtQuery := fmt.Sprintf(`
-		//     select concat(table_schema,'.',table_name),ifnull(ignore_columns,'')
-		//           ,concat(ifnull(table_schema_oracle,table_schema),'.',table_name)
-		//           ,ifnull(chunk_size,1000),ifnull(check_thread_count,10)
-		//           ,ifnull(use_snapshot,'NO'),snapshot_source,snapshot_target
-		//     from %s.syncdiff_config_result t
-		//     where sync_status='%s' and id = %d
-		//     `, cfg.TiDBConfig.Database, SyncWaiting, taskid)
 
 		var syncTableName = fmt.Sprintf("%s.%s", task.TableSchema, task.TableNameTidb)
 		var ignoreColumns = task.IgnoreColumns
@@ -235,20 +226,8 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan models.Syncdif
 			snapshot_source = ""
 			snapshot_target = ""
 		}
-		// stmt_updt0 := fmt.Sprintf(`
-		// 	update %s.syncdiff_config_result
-		// 	set batchid = '%s',
-		// 		job_starttime = now(),
-		// 		sync_status = '%s',
-		// 		sync_starttime = null,
-		// 		sync_endtime = null ,
-		// 		remark = '%d',
-		// 		chunk_num = null,
-		// 		check_success_num = null,
-		// 		check_failed_num = null,
-		// 		check_ignore_num = null
-		// 	where id=%d`, cfg.TiDBConfig.Database, batchid, SyncRunning, threadID, taskid)
-		// db.Exec(stmt_updt0)
+
+		// update sync_status=running
 		task.Batchid = batchid
 		task.JobStarttime = time.Now()
 		task.SyncStatus = SyncRunning
@@ -267,7 +246,7 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan models.Syncdif
 			log.Error(fmt.Sprintf("Connect source database error:%v", err))
 			continue
 		}
-		stmtQuery := fmt.Sprintf("select count(1) from %s t", syncTableName)
+		stmtQuery := fmt.Sprintf("select count(1) from %s ", syncTableName)
 		rows, err := db.Query(stmtQuery)
 		if err != nil {
 			log.Error(err)
@@ -289,20 +268,21 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan models.Syncdif
 
 		rtCode := runSyncDiffTask(cfg, tableSchema, tableName)
 
+		// update sync-diff status
 		syncEndTime := time.Now()
 		durationTime := int(syncEndTime.Sub(syncStartTime).Seconds())
-		stmtUpdate1 := fmt.Sprintf(`update %s.syncdiff_config_result set 
-			table_count = %d,
-			sync_status = '%s',
-			sync_starttime = '%s',
-			sync_endtime = '%s',
-			sync_duration = %d where id = %d
-		`, cfg.TiDBConfig.Database, rowCount, rtCode, syncStartTime.Format("2006-01-02 15:05:04"), syncEndTime.Format("2006-01-02 15:05:04"), durationTime, task.Id)
-		_, err = db.Exec(stmtUpdate1)
-		if err != nil {
-			log.Error(err)
+
+		task.TableCount = rowCount
+		task.SyncStatus = rtCode
+		task.SyncStarttime = syncStartTime
+		task.SyncEndtime = syncEndTime
+		task.SyncDuration = durationTime
+		res = database.DB.Save(&task)
+		if res.Error != nil {
+			log.Error(res.Error)
 			continue
 		}
+
 		if rtCode == CompareFailed {
 			continue
 		}

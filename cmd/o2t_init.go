@@ -160,13 +160,13 @@ func runO2TDumpDataControl(cfg config.OTOConfig) error {
 		return err
 	}
 
-	res := database.DB.Model(&models.O2TConfigModel{}).Where("dump_status = ?", StatusWaiting).Count(&tableCount)
+	res := database.DB.Model(&models.O2TConfigModel{}).Where("dump_status in (?,?)", StatusWaiting, StatusRunning).Count(&tableCount)
 	if res.Error != nil {
 		log.Error(res.Error)
 	}
+	fmt.Printf("Fetch %d rows from o2t_config where dump_status in (%s,%s)\n", tableCount, StatusWaiting, StatusRunning)
+	log.Info(fmt.Sprintf("Fetch %d rows from o2t_config where dump_status in (%s,%s)", tableCount, StatusWaiting, StatusRunning))
 	if tableCount == 0 {
-		fmt.Printf("Fetch 0 rows from o2t_config where dump_status=%s\n", StatusWaiting)
-		log.Info(fmt.Sprintf("Fetch 0 rows from o2t_config where dump_status=%s", StatusWaiting))
 		return nil
 	}
 
@@ -185,7 +185,7 @@ func runO2TDumpDataControl(cfg config.OTOConfig) error {
 		}()
 	}
 	var records []models.O2TConfigModel
-	res = database.DB.Model(&models.O2TConfigModel{}).Where("dump_status = ?", StatusWaiting).Scan(&records)
+	res = database.DB.Model(&models.O2TConfigModel{}).Where("dump_status in (?,?)", StatusWaiting, StatusRunning).Scan(&records)
 	if res.Error != nil {
 		log.Error(res.Error)
 	}
@@ -204,6 +204,13 @@ func runO2TDumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.O2TC
 		dumpStartTime := time.Now()
 		log.Info(fmt.Sprintf("[Thread-%d]Start to dump %s.%s data", threadID, task.TableSchemaOracle, task.TableNameTidb))
 		log.Info(fmt.Sprintf("Process dump-data %d/%d", handleCount, tableCount))
+		// update dump_status=running
+		task.DumpStatus = StatusRunning
+		task.LastDumpTime = dumpStartTime
+		res := database.DB.Save(&task)
+		if res.Error != nil {
+			log.Error(res.Error)
+		}
 		stdLogPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("sqluldr2_%s.%s.log", task.TableSchemaOracle, task.TableNameTidb))
 		dataPath := filepath.Join(cfg.O2TInit.DumpDataDir, fmt.Sprintf("%s.%s.%%B.csv",
 			task.TableSchemaTidb, task.TableNameTidb))
@@ -221,16 +228,15 @@ func runO2TDumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.O2TC
 			log.Error(fmt.Sprintf("Run command stderr:%s", output))
 			task.DumpStatus = StatusFailed
 			task.DumpDuration = dumpDuration
-			task.LastDumpTime = dumpStartTime
+
 		} else {
 			log.Info(fmt.Sprintf("Run command:%s success.", cmd))
 			task.DumpStatus = StatusSuccess
 			task.GenerateConfStatus = StatusWaiting
 			task.LoadStatus = StatusWaiting
 			task.DumpDuration = dumpDuration
-			task.LastDumpTime = dumpStartTime
 		}
-		res := database.DB.Save(&task)
+		res = database.DB.Save(&task)
 		if res.Error != nil {
 			log.Error(res.Error)
 		}

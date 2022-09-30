@@ -162,13 +162,13 @@ func runT2ODumpDataControl(cfg config.OTOConfig) error {
 	if err != nil {
 		return err
 	}
-	res := database.DB.Model(&models.T2OConfigModel{}).Where("dump_status = ?", StatusWaiting).Count(&tableCount)
+	res := database.DB.Model(&models.T2OConfigModel{}).Where("dump_status in(?,?)", StatusWaiting, StatusRunning).Count(&tableCount)
 	if res.Error != nil {
 		log.Error("Execute SQL get error:%v", res.Error)
 	}
+	fmt.Printf("Fetch %d rows from t2o_config where dump_status in (%s,%s)\n", tableCount, StatusWaiting, StatusRunning)
+	log.Info(fmt.Sprintf("Fetch %d rows from t2o_config where dump_status in (%s,%s)", tableCount, StatusWaiting, StatusRunning))
 	if tableCount == 0 {
-		fmt.Printf("Fetch 0 rows from t2o_config where dump_status=%s\n", StatusWaiting)
-		log.Info(fmt.Sprintf("Fetch 0 rows from t2o_config where dump_status=%s", StatusWaiting))
 		return nil
 	}
 
@@ -188,7 +188,7 @@ func runT2ODumpDataControl(cfg config.OTOConfig) error {
 	}
 
 	var records []models.T2OConfigModel
-	res = database.DB.Model(&models.T2OConfigModel{}).Where("dump_status = ?", StatusWaiting).Scan(&records)
+	res = database.DB.Model(&models.T2OConfigModel{}).Where("dump_status in(?,?)", StatusWaiting, StatusRunning).Scan(&records)
 	if res.Error != nil {
 		log.Error(res.Error)
 	}
@@ -207,6 +207,14 @@ func runT2ODumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OC
 		dumpStartTime := time.Now()
 		log.Info(fmt.Sprintf("[Thread-%d]Start to dump %s.%s data", threadID, task.TableSchemaTidb, task.TableNameTidb))
 		log.Info(fmt.Sprintf("Process dump-data %d/%d", handleCount, tableCount))
+		task.DumpStatus = StatusRunning
+		task.LastDumpTime = dumpStartTime
+		// update dump_status = running
+		res := database.DB.Save(&task)
+		if res.Error != nil {
+			log.Error(res.Error)
+		}
+
 		stdLogPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("dumpling_%s.%s.log", task.TableSchemaTidb, task.TableNameTidb))
 		cmd := fmt.Sprintf("%s -u %s -P %d -h %s -p \"%s\" --filter \"%s.%s\" -o %s %s> %s 2>&1", cfg.T2OInit.DumplingBinPath, cfg.TiDBConfig.User,
 			cfg.TiDBConfig.Port, cfg.TiDBConfig.Host, cfg.TiDBConfig.Password,
@@ -222,16 +230,14 @@ func runT2ODumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OC
 
 			task.DumpStatus = StatusFailed
 			task.DumpDuration = dumpDuration
-			task.LastDumpTime = dumpStartTime
 		} else {
 			log.Info(fmt.Sprintf("Run command:%s success.", cmd))
 			task.DumpStatus = StatusSuccess
 			task.GenerateCtlStatus = StatusWaiting
 			task.LoadStatus = StatusWaiting
 			task.DumpDuration = dumpDuration
-			task.LastDumpTime = dumpStartTime
 		}
-		res := database.DB.Save(&task)
+		res = database.DB.Save(&task)
 		if res.Error != nil {
 			log.Error(res.Error)
 		}
@@ -247,13 +253,13 @@ func runT2OGeneratorControl(cfg config.OTOConfig) error {
 		log.Error(err)
 		return err
 	}
-	res := database.DB.Model(&models.T2OConfigModel{}).Where("generate_ctl_status = ?", StatusWaiting).Count(&tableCount)
+	res := database.DB.Model(&models.T2OConfigModel{}).Where("generate_ctl_status in(?,?)", StatusWaiting, StatusRunning).Count(&tableCount)
 	if res.Error != nil {
 		log.Error("Execute SQL get error:%v", res.Error)
 	}
+	fmt.Printf("Fetch %d rows from t2o_config where generate_ctl_status in(%s,%s)\n", tableCount, StatusWaiting, StatusRunning)
+	log.Info(fmt.Sprintf("Fetch %d rows from t2o_config where generate_ctl_status in(%s,%s)", tableCount, StatusWaiting, StatusRunning))
 	if tableCount == 0 {
-		fmt.Printf("Fetch 0 rows from t2o_config where generate_ctl_status=%s\n", StatusWaiting)
-		log.Info(fmt.Sprintf("Fetch 0 rows from t2o_config where generate_ctl_status=%s", StatusWaiting))
 		return nil
 	}
 	threadCount := cfg.Performance.Concurrency
@@ -272,7 +278,7 @@ func runT2OGeneratorControl(cfg config.OTOConfig) error {
 	}
 
 	var records []models.T2OConfigModel
-	res = database.DB.Model(&models.T2OConfigModel{}).Where("generate_ctl_status = ?", StatusWaiting).Scan(&records)
+	res = database.DB.Model(&models.T2OConfigModel{}).Where("generate_ctl_status in(?,?)", StatusWaiting, StatusRunning).Scan(&records)
 	if res.Error != nil {
 		log.Error(res.Error)
 	}
@@ -291,6 +297,14 @@ func runT2OGenerator(cfg config.OTOConfig, threadID int, tasks <-chan models.T2O
 		generateStartTime := time.Now()
 		log.Info(fmt.Sprintf("[Thread-%d]Start to generate oracle sqlldr ctl file for %s.%s", threadID, task.TableSchemaOracle, task.TableNameTidb))
 		log.Info(fmt.Sprintf("Process generate-ctl %d/%d", handleCount, tableCount))
+		// update generate_ctl_status = running
+		task.GenerateCtlStatus = StatusRunning
+		task.LastGenerateCtlTime = generateStartTime
+		res := database.DB.Save(&task)
+		if res.Error != nil {
+			log.Error(res.Error)
+		}
+
 		var db *sql.DB
 		var err error
 		db, err = database.OpenOracleDB(&cfg.OracleConfig)
@@ -356,8 +370,7 @@ func runT2OGenerator(cfg config.OTOConfig, threadID int, tasks <-chan models.T2O
 		task.GenerateCtlStatus = StatusSuccess
 		task.LoadStatus = StatusWaiting
 		task.GenerateCtlDuration = generateDuration
-		task.LastGenerateCtlTime = generateStartTime
-		res := database.DB.Save(&task)
+		res = database.DB.Save(&task)
 		if res.Error != nil {
 			log.Error(res.Error)
 		}
@@ -374,13 +387,13 @@ func runT2OLoadControl(cfg config.OTOConfig) error {
 		log.Error(err)
 		return err
 	}
-	res := database.DB.Model(&models.T2OConfigModel{}).Where("load_status = ?", StatusWaiting).Count(&tableCount)
+	res := database.DB.Model(&models.T2OConfigModel{}).Where("load_status in(?,?)", StatusWaiting, StatusRunning).Count(&tableCount)
 	if res.Error != nil {
 		log.Error("Execute SQL get error:%v", res.Error)
 	}
+	fmt.Printf("Fetch %d rows from t2o_config where load_status in(%s,%s)\n", tableCount, StatusWaiting, StatusRunning)
+	log.Info(fmt.Sprintf("Fetch %d rows from t2o_config where load_status in(%s,%s)", tableCount, StatusWaiting, StatusRunning))
 	if tableCount == 0 {
-		fmt.Printf("Fetch 0 rows from t2o_config where load_status=%s\n", StatusWaiting)
-		log.Info(fmt.Sprintf("Fetch 0 rows from t2o_config where load_status=%s", StatusWaiting))
 		return nil
 	}
 	threadCount := cfg.Performance.Concurrency
@@ -398,7 +411,7 @@ func runT2OLoadControl(cfg config.OTOConfig) error {
 	}
 
 	var records []models.T2OConfigModel
-	res = database.DB.Model(&models.T2OConfigModel{}).Where("load_status = ?", StatusWaiting).Scan(&records)
+	res = database.DB.Model(&models.T2OConfigModel{}).Where("load_status in(?,?)", StatusWaiting, StatusRunning).Scan(&records)
 	if res.Error != nil {
 		log.Error(res.Error)
 	}
@@ -415,6 +428,13 @@ func runT2OLoad(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OConfi
 	for task := range tasks {
 		handleCount = handleCount + 1
 		loadStartTime := time.Now()
+		task.LoadStatus = StatusRunning
+		task.LastLoadTime = loadStartTime
+		res := database.DB.Save(&task)
+		if res.Error != nil {
+			log.Error(res.Error)
+		}
+
 		if cfg.T2OInit.TruncateBeforeLoad == true {
 			var db *sql.DB
 			var err error
@@ -450,15 +470,12 @@ func runT2OLoad(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OConfi
 			log.Error(fmt.Sprintf("Run command stderr:%s", output))
 			task.LoadStatus = StatusFailed
 			task.LoadDuration = loadDuration
-			task.LastLoadTime = loadStartTime
-
 		} else {
 			log.Info(fmt.Sprintf("Run command:%s success.", cmd))
 			task.LoadStatus = StatusSuccess
 			task.LoadDuration = loadDuration
-			task.LastLoadTime = loadStartTime
 		}
-		res := database.DB.Save(&task)
+		res = database.DB.Save(&task)
 		if res.Error != nil {
 			log.Error(res.Error)
 		}
