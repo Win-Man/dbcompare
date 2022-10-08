@@ -1,3 +1,34 @@
+| Author | Reviewer | Version | Update Time | link |
+| ------ | -------- | ------- | ----------- | ---- |
+| Win-Man | - | v1.0 | 2022-10-08 | - |
+
+# t2o-init 介绍
+t2o-init 工具是将 TiDB 全量数据导入到 Oracle 中调度程序，使用 dumpling 将 TiDB 数据导出成 CSV 文件格式，然后使用 sqlldr 工具将 CSV 导入到 Oracle 中。t2o-init 不包含 TiDB 到 Oracle 的表结构转换功能。
+
+## sql-diff 选项介绍
+
+```shell
+t2o-init
+
+Usage:
+  dbcompare t2o-init <prepare|dump-data|generate-ctl|load-data|all> [flags]
+
+Flags:
+  -C, --config string      config file path
+  -h, --help               help for t2o-init
+  -L, --log-level string   log level: info, debug, warn, error, fatal
+```
+
+| 主要选项 | 用途 | 默认值 |
+| ------ | --- | ----- |
+| -L或--log-level | 设置日志打印级别 | info |
+| -C或-config | 指定配置文件路径 | "" |
+| -h | 打印帮助 | |
+
+
+## sql-diff 配置文件说明
+
+```toml
 [log]
 # 日志打印级别
 log-level = "debug"
@@ -31,17 +62,6 @@ password = "123456"
 service-name = "orcl"
 schema-name = ""
 
-
-[sync-diff-control]
-# sync-diff 工具配置文件模板路径
-sync-template = "./config/sync-diff-config.tmpl"
-# 生成 sync-diff 工具配置文件存放目录
-conf-dir = "./work/conf"
-# sync-diff 工具二进制包路径
-bin-path = "./work/bin/o2t-sync-diff"
-
-
-
 [t2o-init]
 # dumpling 工具二进制包路径
 dumpling-bin-path = "./dumpling"
@@ -59,20 +79,44 @@ oracle-ctl-file-dir = "./work/ctl"
 ctl-template = "./config/ctl.tmpl"
 # 是否在 sqlldr 导入之前 truncate 执行 truncate 命令，也可以在 ctl 模板中配置
 truncate-before-load = false
+```
 
-[o2t-init]
-# sqluldr2 工具二进制包路径
-sqluldr2-bin-path = "./sqlldr2"
-# sqluldr2 命令附加参数，会被添加到 sqluldr2 命令末尾
-sqluldr2-extra-args = " batch=yes field=\"0x7c0x230x7c\" record=\"0x7c0x2b0x7c0x0a\" charset=ZHS16GBK safe=yes"
-# sqluldr2 导出备份存放路径
-dump-data-dir = "./work/oracledump"
-# lightning 工具二进制包路径
-lightning-bin-path = "./tidb-lightning"
-# lightning 配置文件模板
-lightning-toml-template = "./config/lightning_toml.tmpl"
-# 生成的 lightning 配置文件存放路径
-lightning-toml-dir = "./config/"
-# lighting 命令附加参数，会被添加到 lightning 命令末尾
-lightning-extra-args = " "
+
+
+### 使用说明
+
+* 创建 t2o_config 配置表
+
+```shell
+./dbcompare t2o-init prepare -C oto_config.toml
+```
+
+* 导出 TiDB 数据
+
+```shell
+./dbcompare t2o-init dump-data -C oto_config.toml
+```
+
+* 生成 ctl 控制文件
+
+```shell
+./dbcompare t2o-init generate-ctl -C oto_config.toml
+```
+
+* 使用 sqlldr 导入数据到 Oracle 
+
+```shell
+./dbcompare t2o-init load-data -C oto_config.toml
+```
+
+
+## 流程图
+![](https://raw.githubusercontent.com/Win-Man/pic-storage/master/img/t2o_init.jpg)
+
+## 日志说明
+
+
+## Roadmap
+
+
 
