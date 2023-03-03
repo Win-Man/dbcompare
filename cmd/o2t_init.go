@@ -61,7 +61,7 @@ func newO2TInitCmd() *cobra.Command {
 				}
 				log.Info("Finished prepare without errors.")
 				fmt.Printf("Create table success.\nPls init table data,refer sql:\n")
-				fmt.Printf(`INSERT INTO %s.o2t_config(table_schema_tidb,table_name_tidb,table_schema_oracle,dump_status,generate_ctl_status,load_status) VALUES ('mydb','mytab','ordb','%s','%s','%s')`,
+				fmt.Printf(`INSERT INTO %s.o2t_config(table_schema_tidb,table_name_tidb,table_schema_oracle,dump_status,generate_conf_status,load_status) VALUES ('mydb','mytab','ordb','%s','%s','%s')`,
 					cfg.TiDBConfig.Database, StatusWaiting, StatusInitialize, StatusInitialize)
 			case "dump-data":
 				err := database.InitDB(cfg.TiDBConfig)
@@ -251,9 +251,17 @@ func runO2TDumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.O2TC
 		dataPath := filepath.Join(cfg.O2TInit.DumpDataDir, fmt.Sprintf("%s.%s.%%B.csv",
 			task.TableSchemaTidb, task.TableNameTidb))
 		ctlPath := filepath.Join(cfg.Log.LogDir, fmt.Sprintf("%s.%s_sqlldr.ctl", strings.ToUpper(task.TableSchemaOracle), strings.ToUpper(task.TableNameTidb)))
-		cmd := fmt.Sprintf("%s user=%s/%s@%s query=%s.%s file=%s control=%s %s > %s 2>&1",
+		// cmd := fmt.Sprintf("%s user=%s/%s@%s query=%s.%s file=%s control=%s %s > %s 2>&1",
+		// 	cfg.O2TInit.Sqluldr2BinPath, cfg.OracleConfig.User, cfg.OracleConfig.Password,
+		// 	cfg.OracleConfig.ServiceName, strings.ToUpper(task.TableSchemaOracle), strings.ToUpper(task.TableNameTidb),
+		// 	dataPath, ctlPath, cfg.O2TInit.Sqluldr2ExtraArgs, stdLogPath)
+		extraColumnsStr := ""
+		if task.DumpExtraCols != "" {
+			extraColumnsStr = fmt.Sprintf(",%s", task.DumpExtraCols)
+		}
+		cmd := fmt.Sprintf("%s user=%s/%s@%s query=\"SELECT t.*%s FROM %s.%s t\" file=%s control=%s %s > %s 2>&1",
 			cfg.O2TInit.Sqluldr2BinPath, cfg.OracleConfig.User, cfg.OracleConfig.Password,
-			cfg.OracleConfig.ServiceName, strings.ToUpper(task.TableSchemaOracle), strings.ToUpper(task.TableNameTidb),
+			cfg.OracleConfig.ServiceName, extraColumnsStr, strings.ToUpper(task.TableSchemaOracle), strings.ToUpper(task.TableNameTidb),
 			dataPath, ctlPath, cfg.O2TInit.Sqluldr2ExtraArgs, stdLogPath)
 		c := exec.Command("bash", "-c", cmd)
 		output, err := c.CombinedOutput()

@@ -22,6 +22,7 @@ type O2TConfigModel struct {
 	LastLoadTime         time.Time `json:"last_load_time" gorm:"type:datetime;default:'1999-01-01 00:00:00'"`
 	OracleRowsCount      int       `json:"oracle_rows_count" gorm:"type:int;default:-1"`
 	TidbRowsCount        int       `json:"tidb_rows_count" gorm:"type:int;default:-1"`
+	DumpExtraCols        string    `json:"dump_extra_cols" gorm:"type:varchar(500)"`
 }
 
 //TableName of GORM model
