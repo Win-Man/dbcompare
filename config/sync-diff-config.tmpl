@@ -39,13 +39,20 @@ fix-sql-file = "{{ .LogDir }}/{{ .SyncTableName }}_fix.sql"
     instance-id = "source-2"
     {{ .SnapTarget }}
 
-{{ if .IgnoreCols  }}
+
 ######################### Tables config #########################
 [[table-config]]
     schema = "{{ .TableSchema }}"
     table = "{{ .TableName }}"
+{{- if .IgnoreCols  }}
     ignore-columns = ["{{ .IgnoreCols }}"]
-{{ end }}
+{{- end }}
+{{- if .FilterClauseTidb }}
+    range = "{{ .FilterClauseTidb }}"
+{{- end }}
+{{- if .FilterClauseOra }}
+    oracle-range = "{{ .FilterClauseOra }}"
+{{- end }}
 
 
 

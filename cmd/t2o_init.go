@@ -165,7 +165,7 @@ func runT2ODumpDataControl(cfg config.OTOConfig) error {
 	}
 	res := database.DB.Model(&models.T2OConfigModel{}).Where("dump_status in(?,?)", StatusWaiting, StatusRunning).Count(&tableCount)
 	if res.Error != nil {
-		log.Error("Execute SQL get error:%v", res.Error)
+		log.Errorf("Execute SQL get error:%v", res.Error)
 	}
 	fmt.Printf("Fetch %d rows from t2o_config where dump_status in (%s,%s)\n", tableCount, StatusWaiting, StatusRunning)
 	log.Info(fmt.Sprintf("Fetch %d rows from t2o_config where dump_status in (%s,%s)", tableCount, StatusWaiting, StatusRunning))
@@ -270,7 +270,7 @@ func runT2OGeneratorControl(cfg config.OTOConfig) error {
 	}
 	res := database.DB.Model(&models.T2OConfigModel{}).Where("generate_ctl_status in(?,?)", StatusWaiting, StatusRunning).Count(&tableCount)
 	if res.Error != nil {
-		log.Error("Execute SQL get error:%v", res.Error)
+		log.Errorf("Execute SQL get error:%v", res.Error)
 	}
 	fmt.Printf("Fetch %d rows from t2o_config where generate_ctl_status in(%s,%s)\n", tableCount, StatusWaiting, StatusRunning)
 	log.Info(fmt.Sprintf("Fetch %d rows from t2o_config where generate_ctl_status in(%s,%s)", tableCount, StatusWaiting, StatusRunning))
@@ -407,7 +407,7 @@ func runT2OLoadControl(cfg config.OTOConfig) error {
 	}
 	res := database.DB.Model(&models.T2OConfigModel{}).Where("load_status in(?,?)", StatusWaiting, StatusRunning).Count(&tableCount)
 	if res.Error != nil {
-		log.Error("Execute SQL get error:%v", res.Error)
+		log.Errorf("Execute SQL get error:%v", res.Error)
 	}
 	fmt.Printf("Fetch %d rows from t2o_config where load_status in(%s,%s)\n", tableCount, StatusWaiting, StatusRunning)
 	log.Info(fmt.Sprintf("Fetch %d rows from t2o_config where load_status in(%s,%s)", tableCount, StatusWaiting, StatusRunning))

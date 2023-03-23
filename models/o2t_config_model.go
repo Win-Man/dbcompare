@@ -13,6 +13,7 @@ type O2TConfigModel struct {
 	TableSchemaOracle    string    `json:"table_schema_oracle" gorm:"type:varchar(64)"`
 	DumpStatus           string    `json:"dump_status" gorm:"type:varchar(20);not null"`
 	DumpDuration         int       `json:"dump_duration" gorm:"type:int"`
+	DumpFilterClauseOra  string    `json:"dump_filter_clause_ora" gorm:"type:varchar(128)"`
 	LastDumpTime         time.Time `json:"last_dump_time" gorm:"type:datetime;default:'1999-01-01 00:00:00'"`
 	GenerateConfStatus   string    `json:"generate_conf_status" gorm:"type:varchar(20);not null"`
 	GenerateDuration     int       `json:"generate_conf_duration" gorm:"type:int"`

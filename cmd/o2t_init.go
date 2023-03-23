@@ -259,10 +259,14 @@ func runO2TDumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.O2TC
 		if task.DumpExtraCols != "" {
 			extraColumnsStr = fmt.Sprintf(",%s", task.DumpExtraCols)
 		}
-		cmd := fmt.Sprintf("%s user=%s/%s@%s query=\"SELECT t.*%s FROM %s.%s t\" file=%s control=%s %s > %s 2>&1",
+		dumpFliter := ""
+		if task.DumpFilterClauseOra != "" {
+			dumpFliter = fmt.Sprintf("where %s", task.DumpFilterClauseOra)
+		}
+		cmd := fmt.Sprintf("%s user=%s/%s@%s query=\"SELECT *%s FROM %s.%s %s\" file=%s control=%s %s > %s 2>&1",
 			cfg.O2TInit.Sqluldr2BinPath, cfg.OracleConfig.User, cfg.OracleConfig.Password,
 			cfg.OracleConfig.ServiceName, extraColumnsStr, strings.ToUpper(task.TableSchemaOracle), strings.ToUpper(task.TableNameTidb),
-			dataPath, ctlPath, cfg.O2TInit.Sqluldr2ExtraArgs, stdLogPath)
+			dumpFliter, dataPath, ctlPath, cfg.O2TInit.Sqluldr2ExtraArgs, stdLogPath)
 		c := exec.Command("bash", "-c", cmd)
 		output, err := c.CombinedOutput()
 		dumpEndTime := time.Now()
