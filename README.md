@@ -1,6 +1,8 @@
 ## dbcompare 介绍
 
 
+## TODO 
+[ ] dbcompare 运行完成，打印整体结束日志 
 
 <!-- LICENSE -->
 ## License
