@@ -5,13 +5,12 @@ import (
 	"testing"
 
 	"github.com/Win-Man/dbcompare/config"
+	"github.com/Win-Man/dbcompare/database"
+	"github.com/Win-Man/dbcompare/models"
 	log "github.com/sirupsen/logrus"
 )
 
 func TestGenerateSyncDiffConfig(t *testing.T) {
-	// generateSyncDiffConfig(tableSchema string, tableName string, tableSchemaTarget string, ignoreCols string,
-	// 	confDir string, chunkSize int, checkThreadCount int, snapSource string, snapTarget string,
-	// 	filterClauseTidb string, filterClauseOra string, cfg config.OTOConfig)
 	tableSchema := "oracleSchema"
 	tableName := "oracleTablename"
 	tableSchemaTarget := "tableSchemaTarget"
@@ -38,5 +37,47 @@ func TestGenerateSyncDiffConfig(t *testing.T) {
 	if err != nil {
 
 		t.Error(err)
+	}
+}
+
+func TestRunSyncDiffControl(t *testing.T) {
+
+	cfg := config.InitOTOConfig("../dev/oto.dev")
+	err := database.InitDB(cfg.TiDBConfig)
+	if err != nil {
+		t.Error(err)
+	}
+	var records []models.SyncdiffConfigModel
+	res := database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status in (?,?)", SyncWaiting, SyncRunning).Scan(&records)
+	if res.Error != nil {
+		t.Error(res.Error)
+	}
+
+	for _, synctask := range records {
+		tableSchema := synctask.TableSchema
+		tableName := synctask.TableNameTidb
+		tableSchemaTarget := synctask.TableSchemaOracle
+		ignoreCols := synctask.IgnoreColumns
+		confDir := cfg.SyncDiffControl.ConfDir
+		chunkSize := synctask.ChunkSize
+		checkThreadCount := synctask.CheckThreadCount
+		snapSource := synctask.SnapshotSource
+		snapTarget := synctask.SnapshotTarget
+		filterClauseTidb := synctask.FilterClauseTidb
+		filterClauseOra := synctask.FilterClauseOra
+		indexFields := synctask.IndexFields
+		var err error
+		err = os.MkdirAll(cfg.SyncDiffControl.ConfDir, 0755)
+		if err != nil {
+			log.Error(err)
+			t.Error(err)
+		}
+
+		err = generateSyncDiffConfig(tableSchema, tableName, tableSchemaTarget, ignoreCols,
+			confDir, chunkSize, checkThreadCount, snapSource, snapTarget,
+			filterClauseTidb, filterClauseOra, indexFields, cfg)
+		if err != nil {
+			t.Error(err)
+		}
 	}
 }
