@@ -312,7 +312,7 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan models.Syncdif
 			log.Info(fmt.Sprintf("[Thread-%d]Update sync summary success.", threadID))
 		}
 
-		log.Info(fmt.Sprintf("[Thread-%d]Finished run sync diff for id:%d %s.%s", threadID, task.Id, tableSchema, tableName))
+		log.Info(fmt.Sprintf("[Thread-%d]Finished run sync diff for id:%d %s.%s. [table count %d/%d]", threadID, task.Id, tableSchema, tableName, handleCount, tableCount))
 
 	}
 }

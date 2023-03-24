@@ -256,7 +256,7 @@ func runT2ODumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OC
 		if res.Error != nil {
 			log.Error(res.Error)
 		}
-		log.Info(fmt.Sprintf("[Thread-%d]Finished dump %s.%s data", threadID, task.TableSchemaTidb, task.TableNameTidb))
+		log.Info(fmt.Sprintf("[Thread-%d]Finished dump %s.%s data. [table count %d/%d]", threadID, task.TableSchemaTidb, task.TableNameTidb, handleCount, tableCount))
 	}
 
 }
@@ -393,7 +393,7 @@ func runT2OGenerator(cfg config.OTOConfig, threadID int, tasks <-chan models.T2O
 			log.Error(res.Error)
 		}
 
-		log.Info(fmt.Sprintf("[Thread-%d]Finished generate ctl for %s.%s", threadID, task.TableSchemaOracle, task.TableNameTidb))
+		log.Info(fmt.Sprintf("[Thread-%d]Finished generate ctl for %s.%s. [table count %d/%d]", threadID, task.TableSchemaOracle, task.TableNameTidb, handleCount, tableCount))
 	}
 
 }
@@ -414,7 +414,7 @@ func runT2OLoadControl(cfg config.OTOConfig) error {
 	if tableCount == 0 {
 		return nil
 	}
-	ProcessBar = pkg.New(tableCount,)
+	ProcessBar = pkg.New(tableCount)
 	threadCount := cfg.Performance.Concurrency
 	tasks := make(chan models.T2OConfigModel, threadCount)
 	var wg sync.WaitGroup
@@ -510,7 +510,7 @@ func runT2OLoad(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OConfi
 		if res.Error != nil {
 			log.Error(res.Error)
 		}
-		log.Info(fmt.Sprintf("[Thread-%d]Finished load %s.%s data", threadID, task.TableSchemaOracle, task.TableNameTidb))
+		log.Info(fmt.Sprintf("[Thread-%d]Finished load %s.%s data. [table count %d/%d]", threadID, task.TableSchemaOracle, task.TableNameTidb, handleCount, tableCount))
 	}
 
 	return nil

@@ -288,7 +288,7 @@ func runO2TDumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.O2TC
 		if res.Error != nil {
 			log.Error(res.Error)
 		}
-		log.Info(fmt.Sprintf("[Thread-%d]Finished dump %s.%s data", threadID, task.TableSchemaOracle, task.TableNameTidb))
+		log.Info(fmt.Sprintf("[Thread-%d]Finished dump %s.%s data. [table count %d/%d]", threadID, task.TableSchemaOracle, task.TableNameTidb, handleCount, tableCount))
 	}
 }
 
