@@ -53,6 +53,9 @@ fix-sql-file = "{{ .LogDir }}/{{ .SyncTableName }}_fix.sql"
 {{- if .FilterClauseOra }}
     oracle-range = "{{ .FilterClauseOra }}"
 {{- end }}
+{{- if .IndexFields }}
+    index-fields = "{{ .IndexFields }}"
+{{- end }}
 
 
 

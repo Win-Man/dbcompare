@@ -29,6 +29,7 @@ type SyncdiffConfigModel struct {
 	IgnoreColumns     string    `gorm:"ignore_columns;type:varchar(128)" json:"ignore_columns"`
 	FilterClauseTidb  string    `gorm:"filter_clause_tidb;type:varchar(128)" json:"filter_clause_tidb"`
 	FilterClauseOra   string    `gorm:"filter_clause_ora;type:varchar(128)" json:"filter_clause_ora"`
+	IndexFields       string    `gorm:"index_fields;type:varchar(128)" json:"index_fields"`
 	ChunkSize         int       `gorm:"chunk_size;type:int;default:1000" json:"chunk_size"`
 	CheckThreadCount  int       `gorm:"check_thread_count;type:int;default:10" json:"check_thread_count"`
 	UseSnapshot       string    `gorm:"use_snapshot;type:varchar(10)" json:"use_snapshot"`
