@@ -316,9 +316,8 @@ func runO2TGenerateConf(cfg config.OTOConfig) error {
 		DumpDataDir: cfg.O2TInit.DumpDataDir,
 		TiDBDB:      cfg.TiDBConfig,
 	}
-	lightningTomlDir, _ := filepath.Split(cfg.O2TInit.LightningTomlTemplate)
 
-	lightningTomlPath := filepath.Join(lightningTomlDir, "tidb-lightning.toml")
+	lightningTomlPath := filepath.Join(cfg.O2TInit.LightningTomlDir, "tidb-lightning.toml")
 	f, err := os.Create(lightningTomlPath)
 	defer f.Close()
 	if err != nil {
