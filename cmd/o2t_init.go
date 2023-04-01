@@ -355,10 +355,8 @@ func runO2TLoadData(cfg config.OTOConfig) error {
 	log.Info(fmt.Sprintf("Start to load data by tidb-lightning "))
 	loadStartTime := time.Now()
 
-	lightningTomlDir, _ := filepath.Split(cfg.O2TInit.LightningTomlTemplate)
-
-	lightningTomlPath := filepath.Join(lightningTomlDir, "tidb-lightning.toml")
-	lightningStdPath := filepath.Join(lightningTomlDir, "tidb_lighting_stderr.log")
+	lightningTomlPath := filepath.Join(cfg.O2TInit.LightningTomlDir, "tidb-lightning.toml")
+	lightningStdPath := filepath.Join(cfg.O2TInit.LightningTomlDir, "tidb_lighting_stderr.log")
 	cmd := fmt.Sprintf("%s -config %s %s > %s 2>&1", cfg.O2TInit.LightningBinPath, lightningTomlPath,
 		cfg.O2TInit.LightningExtraArgs, lightningStdPath)
 	c := exec.Command("bash", "-c", cmd)
