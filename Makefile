@@ -25,6 +25,9 @@ all: build
 
 build:
 	$(GOBUILD) -ldflags '$(LDFLAGS)'  -o ./bin/dbcompare_${GOARCH} main.go
+	cp ./config/ctl.tmpl ./bin
+	cp ./config/lightning_toml.tmpl ./bin
+	cp ./config/sync-diff-config.tmpl ./bin
 	
 tool:
 	go tool vet . |& grep -v vendor; true

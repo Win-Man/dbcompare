@@ -49,6 +49,8 @@ type SyncDiffTemplate struct {
 	FilterClauseTidb  string
 	FilterClauseOra   string
 	IndexFields       string
+	OracleHint        string
+	TidbHint          string
 }
 
 var batchid string
@@ -263,7 +265,7 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan models.Syncdif
 		//Generate sync condig
 		err = generateSyncDiffConfig(tableSchema, tableName, tableSchemaTarget, ignoreColumns,
 			cfg.SyncDiffControl.ConfDir, chunk_size, check_thread_count, snapshot_source,
-			snapshot_target, task.FilterClauseTidb, task.FilterClauseOra, task.IndexFields, cfg)
+			snapshot_target, task, cfg)
 		if err != nil {
 			log.Error(fmt.Sprintf("[Thread-%d]GenerateSyncDiffConfig error:%v", threadID, err))
 			continue
@@ -319,7 +321,7 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan models.Syncdif
 
 func generateSyncDiffConfig(tableSchema string, tableName string, tableSchemaTarget string, ignoreCols string,
 	confDir string, chunkSize int, checkThreadCount int, snapSource string, snapTarget string,
-	filterClauseTidb string, filterClauseOra string, indexFields string, cfg config.OTOConfig) error {
+	task models.SyncdiffConfigModel, cfg config.OTOConfig) error {
 	log.Info(fmt.Sprintf("Start to generate o2t-sync-diff config for %s.%s", tableSchema, tableName))
 	tpl, err := template.ParseFiles(cfg.SyncDiffControl.SyncTemplate)
 	if err != nil {
@@ -338,9 +340,11 @@ func generateSyncDiffConfig(tableSchema string, tableName string, tableSchemaTar
 		SnapSource:        snapSource,
 		SnapTarget:        snapTarget,
 		LogDir:            cfg.Log.LogDir,
-		FilterClauseTidb:  filterClauseTidb,
-		FilterClauseOra:   filterClauseOra,
-		IndexFields:       indexFields,
+		FilterClauseTidb:  task.FilterClauseTidb,
+		FilterClauseOra:   task.FilterClauseOra,
+		IndexFields:       task.IndexFields,
+		OracleHint:        task.OracleHint,
+		TidbHint:          task.TidbHint,
 	}
 	if ignoreCols != "" {
 		syncdifftmp.IgnoreCols = strings.Replace(ignoreCols, ",", "\",\"", -1)

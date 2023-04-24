@@ -56,6 +56,12 @@ fix-sql-file = "{{ .LogDir }}/{{ .SyncTableName }}_fix.sql"
 {{- if .IndexFields }}
     index-fields = "{{ .IndexFields }}"
 {{- end }}
+{{- if .OracleHint }}
+    oracle-hint = "{{ .OracleHint }}"
+{{- end }}
+{{- if .TidbHint }}
+    tidb-hint = "{{ .TidbHint }}"
+{{- end }}
 
 
 
