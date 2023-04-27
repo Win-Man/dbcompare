@@ -28,7 +28,7 @@ build:
 	cp ./config/ctl.tmpl ./bin
 	cp ./config/lightning_toml.tmpl ./bin
 	cp ./config/sync-diff-config.tmpl ./bin
-	echo $(GITHASH) >> ./bin/githash.txt
+	echo $(GITHASH) > ./bin/githash.txt
 	
 tool:
 	go tool vet . |& grep -v vendor; true
