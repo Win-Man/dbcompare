@@ -466,7 +466,7 @@ func getOracleRowsCount(dbcfg config.OracleDBConfig, tableSchemaOracle string, t
 		log.Error(fmt.Sprintf("Connect source database error:%v", err))
 		return -1, err
 	}
-	querySql := fmt.Sprintf("select count(1) from %s ", tableName)
+	querySql := fmt.Sprintf("select count(1) from %s.%s ", tableSchemaOracle, tableName)
 	log.Debug(fmt.Sprintf("Sql: %s", querySql))
 	rows, err := db.Query(querySql)
 	if err != nil {
