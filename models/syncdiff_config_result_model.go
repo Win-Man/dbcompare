@@ -44,9 +44,10 @@ type SyncdiffConfigModel struct {
 	ContainDatatypes  string    `gorm:"contain_datatypes;type:varchar(256)" json:"contain_datatypes"`
 	TableLabel        string    `gorm:"table_label;type:varchar(128)" json:"table_label"`
 	Remark            string    `gorm:"remark;type:varchar(128)" json:"remark"`
+	Priority          int       `gorm:"priority;type:int;default:1" json:"priority"`
 }
 
-//TableName of GORM model
+// TableName of GORM model
 func (it *SyncdiffConfigModel) TableName() string {
 	return "syncdiff_config_result"
 }
@@ -89,11 +90,11 @@ func (it *SyncdiffConfigModel) Delete() (err error) {
 	return nil
 }
 
-func (it *SyncdiffConfigModel) GetListPage(pageNum int, pageSize int) (err error, o2tConfigList []O2TConfigModel, count int64) {
+func (it *SyncdiffConfigModel) GetListPage(pageNum int, pageSize int) (o2tConfigList []O2TConfigModel, count int64, err error) {
 	err = database.DB.Order("id asc").Offset(pageNum * pageSize).Limit(pageSize).Find(&o2tConfigList).Error
 	database.DB.Table(it.TableName()).Count(&count)
 	if err != nil {
-		return err, o2tConfigList, 0
+		return o2tConfigList, 0, err
 	}
-	return nil, o2tConfigList, count
+	return o2tConfigList, count, nil
 }

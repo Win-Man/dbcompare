@@ -26,7 +26,7 @@ type O2TConfigModel struct {
 	DumpExtraCols        string    `json:"dump_extra_cols" gorm:"type:varchar(500)"`
 }
 
-//TableName of GORM model
+// TableName of GORM model
 func (it *O2TConfigModel) TableName() string {
 	return "o2t_config"
 }
@@ -69,11 +69,11 @@ func (it *O2TConfigModel) Delete() (err error) {
 	return nil
 }
 
-func (it *O2TConfigModel) GetListPage(pageNum int, pageSize int) (err error, o2tConfigList []O2TConfigModel, count int64) {
+func (it *O2TConfigModel) GetListPage(pageNum int, pageSize int) (o2tConfigList []O2TConfigModel, count int64, err error) {
 	err = database.DB.Order("id asc").Offset(pageNum * pageSize).Limit(pageSize).Find(&o2tConfigList).Error
 	database.DB.Table(it.TableName()).Count(&count)
 	if err != nil {
-		return err, o2tConfigList, 0
+		return o2tConfigList, 0, err
 	}
-	return nil, o2tConfigList, count
+	return o2tConfigList, count, nil
 }

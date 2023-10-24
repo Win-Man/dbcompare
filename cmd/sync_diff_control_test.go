@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -51,12 +52,13 @@ func TestRunSyncDiffControl(t *testing.T) {
 		t.Error(err)
 	}
 	var records []models.SyncdiffConfigModel
-	res := database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status in (?,?)", SyncWaiting, SyncRunning).Scan(&records)
+	res := database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status in (?,?)", SyncWaiting, SyncRunning).Order("priority desc").Scan(&records)
 	if res.Error != nil {
 		t.Error(res.Error)
 	}
 
 	for _, synctask := range records {
+		fmt.Printf("Doing %s.%s priority %d", synctask.TableSchema, synctask.TableNameTidb, synctask.Priority)
 		tableSchema := synctask.TableSchema
 		tableName := synctask.TableNameTidb
 		tableSchemaTarget := synctask.TableSchemaOracle

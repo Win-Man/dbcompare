@@ -293,8 +293,7 @@ func runO2TDumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.O2TC
 }
 
 func runO2TGenerateConfControl(cfg config.OTOConfig) error {
-	var err error
-	err = os.MkdirAll(cfg.O2TInit.LightningTomlDir, 0755)
+	err := os.MkdirAll(cfg.O2TInit.LightningTomlDir, 0755)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -304,7 +303,7 @@ func runO2TGenerateConfControl(cfg config.OTOConfig) error {
 }
 
 func runO2TGenerateConf(cfg config.OTOConfig) error {
-	log.Info(fmt.Sprintf("Start to generate tidb-lightning.toml "))
+	log.Info("Start to generate tidb-lightning.toml ")
 	generateStartTime := time.Now()
 	tpl, err := template.ParseFiles(cfg.O2TInit.LightningTomlTemplate)
 	if err != nil {
@@ -352,7 +351,7 @@ func runO2TLoadDataControl(cfg config.OTOConfig) error {
 
 func runO2TLoadData(cfg config.OTOConfig) error {
 
-	log.Info(fmt.Sprintf("Start to load data by tidb-lightning "))
+	log.Info("Start to load data by tidb-lightning ")
 	loadStartTime := time.Now()
 
 	lightningTomlPath := filepath.Join(cfg.O2TInit.LightningTomlDir, "tidb-lightning.toml")

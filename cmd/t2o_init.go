@@ -158,8 +158,7 @@ func createT2OInitMeta(cfg config.OTOConfig) error {
 }
 
 func runT2ODumpDataControl(cfg config.OTOConfig) error {
-	var err error
-	err = os.MkdirAll(cfg.T2OInit.DumpDataDir, 0755)
+	err := os.MkdirAll(cfg.T2OInit.DumpDataDir, 0755)
 	if err != nil {
 		return err
 	}
@@ -262,8 +261,7 @@ func runT2ODumpData(cfg config.OTOConfig, threadID int, tasks <-chan models.T2OC
 }
 
 func runT2OGeneratorControl(cfg config.OTOConfig) error {
-	var err error
-	err = os.MkdirAll(cfg.T2OInit.OracleCtlFileDir, 0755)
+	err := os.MkdirAll(cfg.T2OInit.OracleCtlFileDir, 0755)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -399,8 +397,7 @@ func runT2OGenerator(cfg config.OTOConfig, threadID int, tasks <-chan models.T2O
 }
 
 func runT2OLoadControl(cfg config.OTOConfig) error {
-	var err error
-	err = os.MkdirAll(cfg.T2OInit.DumpDataDir, 0755)
+	err := os.MkdirAll(cfg.T2OInit.DumpDataDir, 0755)
 	if err != nil {
 		log.Error(err)
 		return err

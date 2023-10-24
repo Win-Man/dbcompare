@@ -24,7 +24,7 @@ type T2OConfigModel struct {
 	TidbRowsCount       int       `json:"tidb_rows_count" gorm:"type:int;default:-1"`
 }
 
-//TableName of GORM model
+// TableName of GORM model
 func (it *T2OConfigModel) TableName() string {
 	return "t2o_config"
 }
@@ -67,11 +67,11 @@ func (it *T2OConfigModel) Delete() (err error) {
 	return nil
 }
 
-func (it *T2OConfigModel) GetListPage(pageNum int, pageSize int) (err error, o2tConfigList []O2TConfigModel, count int64) {
+func (it *T2OConfigModel) GetListPage(pageNum int, pageSize int) (o2tConfigList []O2TConfigModel, count int64, err error) {
 	err = database.DB.Order("id asc").Offset(pageNum * pageSize).Limit(pageSize).Find(&o2tConfigList).Error
 	database.DB.Table(it.TableName()).Count(&count)
 	if err != nil {
-		return err, o2tConfigList, 0
+		return o2tConfigList, 0, err
 	}
-	return nil, o2tConfigList, count
+	return o2tConfigList, count, nil
 }

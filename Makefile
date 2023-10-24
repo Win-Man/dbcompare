@@ -21,15 +21,21 @@ LDFLAGS += -X "$(REPO)/service.BuildTS=$(BUILDTS)"
 LDFLAGS += -X "$(REPO)/service.GitHash=$(GITHASH)"
 LDFLAGS += -X "$(REPO)/service.GitBranch=$(GITREF)"
 
-all: build
+all: build arm64 amd64
 
 build:
-	$(GOBUILD) -ldflags '$(LDFLAGS)'  -o ./bin/dbcompare_${GOARCH} main.go
+	$(GOBUILD) -ldflags '$(LDFLAGS)'  -o ./bin/dbcompare_${GOOS}_${GOARCH} main.go
 	cp ./config/ctl.tmpl ./bin
 	cp ./config/lightning_toml.tmpl ./bin
 	cp ./config/sync-diff-config.tmpl ./bin
-	echo $(GITHASH) > ./bin/githash.txt
 	
+arm64:
+	GO111MODULE=on GOOS=linux GOARCH=arm64 go build -ldflags '$(LDFLAGS)'  -o ./bin/dbcompare_linux_arm64 main.go
+amd64:
+	GO111MODULE=on GOOS=linux GOARCH=amd64 go build -ldflags '$(LDFLAGS)'  -o ./bin/dbcompare_linux_amd64 main.go
+
+
+
 tool:
 	go tool vet . |& grep -v vendor; true
 	gofmt -w .

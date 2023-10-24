@@ -85,8 +85,8 @@ func newSyncDiffCmd() *cobra.Command {
 				}
 				log.Info("Finished prepare without errors.")
 				fmt.Printf("Create table success.\nPls init table data,refer sql:\n")
-				fmt.Printf(fmt.Sprintf("insert into %s.syncdiff_config_result(table_schema,table_name,sync_status) select table_schema,table_name,'%s' from information_schema.tables where table_schema='mydb' \n",
-					cfg.TiDBConfig.Database, SyncWaiting))
+				fmt.Printf("insert into %s.syncdiff_config_result(table_schema,table_name,sync_status) select table_schema,table_name,'%s' from information_schema.tables where table_schema='mydb' \n",
+					cfg.TiDBConfig.Database, SyncWaiting)
 			case "run":
 				err := database.InitDB(cfg.TiDBConfig)
 				if err != nil {
@@ -134,8 +134,7 @@ func runSyncDiffControl(cfg config.OTOConfig) error {
 	//generateSyncDiffConfig("dbdb", "tabletable")
 	log.Debug("Start to run SyncdiffControl")
 	batchid = time.Now().Format("20060102150405")
-	var err error
-	err = os.MkdirAll(cfg.SyncDiffControl.ConfDir, 0755)
+	err := os.MkdirAll(cfg.SyncDiffControl.ConfDir, 0755)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -171,7 +170,7 @@ func runSyncDiffControl(cfg config.OTOConfig) error {
 	}
 
 	var records []models.SyncdiffConfigModel
-	res = database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status in (?,?)", SyncWaiting, SyncRunning).Scan(&records)
+	res = database.DB.Model(&models.SyncdiffConfigModel{}).Where("sync_status in (?,?)", SyncWaiting, SyncRunning).Order("priority desc").Scan(&records)
 	if res.Error != nil {
 		log.Errorf("Execute SQL get error:%v", res.Error)
 	}
