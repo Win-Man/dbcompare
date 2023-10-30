@@ -34,6 +34,7 @@ import (
 // [] sync-diff-inspector
 
 type SyncDiffTemplate struct {
+	LogLevel          string
 	ChunkSize         int
 	CheckThreadCount  int
 	SyncTableName     string
@@ -328,6 +329,7 @@ func generateSyncDiffConfig(tableSchema string, tableName string, tableSchemaTar
 		return err
 	}
 	syncdifftmp := SyncDiffTemplate{
+		LogLevel:          task.LogLevel,
 		ChunkSize:         chunkSize,
 		CheckThreadCount:  checkThreadCount,
 		SyncTableName:     fmt.Sprintf("%s.%s", tableSchema, tableName),

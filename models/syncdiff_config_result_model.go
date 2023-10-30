@@ -45,6 +45,7 @@ type SyncdiffConfigModel struct {
 	TableLabel        string    `gorm:"table_label;type:varchar(128)" json:"table_label"`
 	Remark            string    `gorm:"remark;type:varchar(128)" json:"remark"`
 	Priority          int       `gorm:"priority;type:int;default:1" json:"priority"`
+	LogLevel          string    `json:"log_level" gorm:"type:varchar(20);default:'info'"`
 }
 
 // TableName of GORM model

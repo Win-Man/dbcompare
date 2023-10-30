@@ -1,6 +1,6 @@
 # Sync Diff Configuration.
 ######################### Global config #########################
-log-level = "info"
+log-level = "{{ .LogLevel }}"
 chunk-size = {{ .ChunkSize }}
 check-thread-count = {{ .CheckThreadCount }}
 sample-percent = 100
