@@ -25,6 +25,7 @@ import (
 	"github.com/Win-Man/dbcompare/config"
 	"github.com/Win-Man/dbcompare/database"
 	"github.com/Win-Man/dbcompare/models"
+	"github.com/Win-Man/dbcompare/pkg"
 	"github.com/Win-Man/dbcompare/pkg/logger"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -154,7 +155,7 @@ func runSyncDiffControl(cfg config.OTOConfig) error {
 	if tableCount == 0 {
 		return nil
 	}
-
+	ProcessBar = pkg.New(tableCount, pkg.WithFiller("="))
 	threadCount := cfg.Performance.Concurrency
 	tasks := make(chan models.SyncdiffConfigModel, threadCount)
 	var wg sync.WaitGroup
@@ -180,12 +181,9 @@ func runSyncDiffControl(cfg config.OTOConfig) error {
 	}
 
 	close(tasks)
-	// var db *sql.DB
-	// var err error
-	// db, err = database.OpenMySQLDB(&cfg.TiDBConfig)
 
-	// db.Close()
 	wg.Wait()
+	ProcessBar.Finish()
 	return nil
 }
 
@@ -193,6 +191,7 @@ func runSyncDiff(cfg config.OTOConfig, threadID int, tasks <-chan models.Syncdif
 
 	for task := range tasks {
 		handleCount = handleCount + 1
+		ProcessBar.Done(1)
 		log.Info(fmt.Sprintf("[Thread-%d]Start to run sync diff for %s.%s", threadID, task.TableSchema, task.TableNameTidb))
 		log.Info(fmt.Sprintf("Process sync-diff %d/%d", handleCount, tableCount))
 
